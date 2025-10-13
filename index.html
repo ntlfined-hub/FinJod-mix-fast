@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>FIN-JOD · บันทึก + หนี้ + รายการย้อนหลัง (หน้าเดียว)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#1e1e1e; --panel:#242424; --line:#3a3a3a; --muted:#bfbfbf; --text:#f1f1f1;
+      --primary:#00c896; --danger:#ff4d4f; --blue:#6c8cff; --warn:#ffb020; --cyan:#2dd4bf;
+    }
+    *{ box-sizing:border-box } html,body{ height:100% }
+    body{ margin:0; padding:clamp(.75rem,2vw,1.25rem);
+      padding-bottom:calc(clamp(.75rem,2vw,1.25rem) + env(safe-area-inset-bottom,0px));
+      font-family:'Kanit',sans-serif; background:var(--bg); color:var(--text) }
+    .wrap{ width:min(1140px,100%); margin:auto; background:var(--panel); border:1px solid var(--line);
+      border-radius:20px; padding:clamp(1rem,2.2vw,1.5rem) }
+    h1{ margin:.25rem 0 1rem; font-size:clamp(1.25rem,4.5vw,1.8rem); color:var(--primary); text-align:center }
+    .head{ display:flex; align-items:center; gap:.75rem; margin-bottom:.75rem }
+    .head .you{ margin-left:auto; color:#9fe9d4; font-weight:600 }
+
+    .card{ background:#1f1f1f; border:1px solid var(--line); border-radius:16px; padding:1rem }
+    .row{ display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1rem }
+    .col{ flex:1 1 46%; min-width:230px; display:flex; flex-direction:column; gap:.35rem }
+    label{ color:var(--muted) }
+    input,select,button{ border-radius:12px; border:1px solid var(--line); background:#1d1d1d; color:#fff; min-height:44px; padding:.9rem 1rem; font-size:16px }
+    input[type=number]{ text-align:right; -moz-appearance:textfield }
+    input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0 }
+    button{ background:var(--primary); border:none; font-weight:700; cursor:pointer }
+    button:disabled{ opacity:.6; cursor:not-allowed }
+    .btn-ghost{ background:#333 } .btn-blue{ background:var(--blue) } .btn-warn{ background:var(--warn); color:#222 } .btn-danger{ background:var(--danger) }
+    .btn-green{ background:var(--primary) } .btn-cyan{ background:var(--cyan); color:#052a27 }
+
+    .seg{ display:flex; gap:.5rem; flex-wrap:wrap }
+    .seg button{ background:#2a2a2a } .seg button.active{ background:var(--primary); color:#052a27 }
+
+    .hide{ display:none }
+    .right{ text-align:right }
+    .muted{ color:var(--muted) }
+
+    /* table */
+    table{ width:100%; border-collapse:collapse; table-layout:fixed; font-size:.98rem }
+    th,td{ border-bottom:1px solid var(--line); padding:.8rem .5rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+    th{ color:var(--muted); font-weight:600; text-align:left; position:sticky; top:0; background:#1f1f1f; z-index:1 }
+    .table-viewport{ max-height:64vh; overflow:auto; border-radius:12px; border:1px solid var(--line) }
+    .badge{ padding:.25rem .5rem; border-radius:999px; font-size:.85rem }
+    .badge-inc{ background:rgba(0,200,150,.18); color:#9ff3df; border:1px solid rgba(0,200,150,.35) }
+    .badge-exp{ background:rgba(233,30,99,.15); color:#ffb6cc; border:1px solid rgba(233,30,99,.35) }
+    .badge-sav{ background:rgba(45,212,191,.16); color:#a7fff0; border:1px solid rgba(45,212,191,.35) }
+    .badge-debt{ background:rgba(108,140,255,.16); color:#c8d2ff; border:1px solid rgba(108,140,255,.35) }
+
+    /* chips / filters */
+    .chips{ display:flex; gap:.5rem; flex-wrap:wrap }
+    .chip{ padding:.5rem .8rem; border-radius:999px; background:#2a2a2a; border:1px solid var(--line); cursor:pointer; user-select:none }
+    .chip.active{ background:var(--blue) }
+
+    /* toast & overlay */
+    #toast{ position:fixed; left:50%; bottom:calc(18px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%);
+      background:#333; color:#fff; padding:.6rem .9rem; border-radius:10px; opacity:0; transition:.3s; pointer-events:none; z-index:60 }
+    #overlay{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.35); backdrop-filter:blur(2px); z-index:99; transition:.2s }
+    #overlay.hide{ opacity:0; pointer-events:none }
+    .spinner{ width:56px; height:56px; border-radius:50%; border:6px solid #3a3a3a; border-top-color:#fff; animation:spin 1s linear infinite }
+    @keyframes spin{ to{ transform:rotate(360deg) } }
+
+    /* modal */
+    .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:120 }
+    .modal-backdrop.show{ display:flex }
+    .modal{ width:min(640px,96vw); background:#242424; border:1px solid var(--line); border-radius:16px; padding:1rem 1rem 1.25rem }
+    .modal .title{ font-weight:700; margin-bottom:.75rem }
+    .modal .actions{ display:flex; gap:.5rem; justify-content:flex-end; margin-top:.5rem }
+  </style>
+
+  <!-- LIFF SDK -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <h1 style="margin:0">FIN-JOD · หน้าเดียวครบ</h1>
+      <div class="you" id="who"></div>
+    </div>
+
+    <!-- ===== บันทึก + หนี้ ===== -->
+    <section class="card" id="sec-add" style="margin-bottom:1rem">
+      <div class="row">
+        <div class="col"><label for="txDate">วันที่</label><input id="txDate" type="date"></div>
+        <div class="col">
+          <label>ประเภท</label>
+          <div class="seg">
+            <button id="btnTypeExp" class="active">รายจ่าย</button>
+            <button id="btnTypeInc">รายรับ</button>
+            <button id="btnTypeSav">ออมเงิน</button>
+            <span class="muted" style="align-self:center">|</span>
+            <button id="btnTypeDebtRepay" class="btn-blue" style="background:#2a2a2a">จ่ายหนี้</button>
+            <button id="btnTypeDebtBorrow" class="btn-blue" style="background:#2a2a2a">กู้หนี้</button>
+          </div>
+          <select id="txType" class="hide" aria-hidden="true">
+            <option value="expense" selected>expense</option>
+            <option value="income">income</option>
+            <option value="saving">saving</option>
+            <option value="debt_repay">debt_repay</option>
+            <option value="debt_borrow">debt_borrow</option>
+          </select>
+        </div>
+
+        <!-- หมวดทั่วไป -->
+        <div class="col" id="colCat">
+          <label for="txCat">หมวดหมู่</label>
+          <select id="txCat"></select>
+          <div class="muted" style="font-size:.9rem">* เพิ่มหมวดใหม่ได้จากหน้าเดิม (ถ้ามี)</div>
+        </div>
+
+        <!-- เจ้าหนี้ -->
+        <div class="col hide" id="colDebt">
+          <label for="txDebt">เลือกเจ้าหนี้</label>
+          <select id="txDebt"></select>
+          <div class="muted" style="font-size:.9rem">* ข้อมูลจากเมนูจัดการหนี้</div>
+        </div>
+
+        <!-- ฟิลด์จ่ายหนี้ แยกดอก/ต้น -->
+        <div class="col hide" id="colDebtRepayFields" style="flex:1 1 100%">
+          <label>รายละเอียดการจ่ายหนี้</label>
+          <div class="row" style="gap:.6rem; margin:0">
+            <div class="col"><input id="txInt" type="number" step="0.01" placeholder="จ่ายดอก (บาท)"></div>
+            <div class="col"><input id="txPrin" type="number" step="0.01" placeholder="จ่ายต้น (บาท)"></div>
+          </div>
+          <div class="muted" style="font-size:.9rem">* ระบบจะบันทึกยอดรวม = ดอก + ต้น</div>
+        </div>
+
+        <!-- จำนวนเงินทั่วไป -->
+        <div class="col" id="colAmount">
+          <label for="txAmount">จำนวนเงิน (บาท)</label>
+          <input id="txAmount" type="number" step="0.01" placeholder="0.00" inputmode="decimal">
+        </div>
+
+        <div class="col" style="flex:1 1 100%">
+          <label for="txNote">หมายเหตุ</label>
+          <input id="txNote" placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)" maxlength="500">
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end">
+        <button id="btnSave" class="btn-green" style="min-width:180px">บันทึก</button>
+      </div>
+    </section>
+
+    <!-- ===== รายการย้อนหลัง ===== -->
+    <section class="card" id="sec-list">
+      <div class="row">
+        <div class="col"><label for="fFrom">จาก</label><input id="fFrom" type="date"></div>
+        <div class="col"><label for="fTo">ถึง</label><input id="fTo" type="date"></div>
+        <div class="col">
+          <label>&nbsp;</label>
+          <div class="chips">
+            <div class="chip" data-range="today">วันนี้</div>
+            <div class="chip" data-range="7">7 วัน</div>
+            <div class="chip" data-range="30">30 วัน</div>
+            <div class="chip" data-range="month">เดือนนี้</div>
+            <div class="chip" data-range="year">ปีนี้</div>
+            <button id="btnRefresh" class="btn-blue" style="margin-left:auto">รีเฟรช</button>
+          </div>
+          <div class="muted" style="margin-top:.4rem">กำลังดู: <b id="rangeBadge">กำหนดเอง</b></div>
+        </div>
+      </div>
+
+      <div class="table-viewport">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:110px">วันที่</th>
+              <th style="width:150px">ประเภท</th>
+              <th>หมวด</th>
+              <th class="right" style="width:130px">จำนวน</th>
+              <th>หมายเหตุ</th>
+              <th style="width:120px">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="tblBody"></tbody>
+        </table>
+      </div>
+      <div id="emptyList" class="muted" style="margin-top:.5rem; display:none">ยังไม่มีรายการ</div>
+    </section>
+  </div>
+
+  <!-- ===== MODALS ===== -->
+  <div id="editBackdrop" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+      <div id="editTitle" class="title">แก้ไขรายการ</div>
+      <input id="editTxId" type="hidden">
+
+      <div class="row">
+        <div class="col"><label for="editDate">วันที่</label><input id="editDate" type="date"></div>
+
+        <!-- แบบปกติ -->
+        <div class="col" id="editColType">
+          <label for="editType">ประเภท</label>
+          <select id="editType">
+            <option value="expense">รายจ่าย</option>
+            <option value="income">รายรับ</option>
+            <option value="saving">ออมเงิน</option>
+          </select>
+        </div>
+        <div class="col" id="editColCat">
+          <label for="editCat">หมวดหมู่</label><select id="editCat"></select>
+        </div>
+        <div class="col" id="editColAmount">
+          <label for="editAmount">จำนวนเงิน (บาท)</label>
+          <input id="editAmount" type="number" step="0.01" placeholder="0.00">
+        </div>
+
+        <!-- กรณีจ่ายหนี้ -->
+        <div class="col hide" id="editColDebtRepayFields" style="flex:1 1 100%">
+          <label>รายละเอียดการจ่ายหนี้</label>
+          <div class="row" style="gap:.6rem; margin:0">
+            <div class="col"><input id="editInt" type="number" step="0.01" placeholder="จ่ายดอก (บาท)"></div>
+            <div class="col"><input id="editPrin" type="number" step="0.01" placeholder="จ่ายต้น (บาท)"></div>
+          </div>
+          <div class="muted" style="font-size:.9rem">* ระบบจะคำนวณยอดรวมให้อัตโนมัติ</div>
+        </div>
+
+        <div class="col" style="flex:1 1 100%"><label for="editNote">หมายเหตุ</label><input id="editNote" maxlength="500" placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"></div>
+      </div>
+
+      <div class="actions">
+        <button id="btnDelete" class="btn-danger">ลบ</button>
+        <button id="btnCancel" class="btn-ghost">ยกเลิก</button>
+        <button id="btnUpdate" class="btn-warn">บันทึกการแก้ไข</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast">แจ้งเตือน</div>
+  <div id="overlay" class="hide" aria-live="polite" aria-busy="true"><div class="spinner"></div></div>
+
+<script>
+/** ===== CONFIG ===== */
+const LIFF_ID = '2008276151-9YrQ26z2'; // ใช้ LIFF ID ที่เปิดสิทธิ์ same domain
+const API_URL  = 'https://script.google.com/macros/s/AKfycbxV3xOU1kQM86jUJtfer8hW_HgYkcLfpH942saPVbCZ1RDmN_4LYjpk72OxdKKLQAFt/exec';
+
+/** ===== STATE ===== */
+let token = localStorage.getItem('fin_token') || '';
+let displayName = localStorage.getItem('fin_name') || '';
+let lastItems = [];
+let cats = { income:[], expense:[], saving:[] };
+let debtsCache = []; // active debts
+let withdrawIncomeIds = new Set();
+
+/** ===== HELPERS ===== */
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const fmt = n => Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2, maximumFractionDigits:2});
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const toast = (msg, ok=true)=>{ const el=$('#toast'); el.textContent=msg; el.style.background= ok?'#00c896':'#ff4d4f'; el.style.opacity='1'; setTimeout(()=> el.style.opacity='0', 2200); };
+const showOverlay = on => $('#overlay').classList.toggle('hide', !on);
+function toYMD(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function todayISO(){ return toYMD(new Date()); }
+function monthBounds(d){ return { start: toYMD(new Date(d.getFullYear(), d.getMonth(), 1)), end: toYMD(new Date(d.getFullYear(), d.getMonth()+1, 0)) }; }
+const safeKey = x => `${(x.date||'').slice(0,10)}T${(x.time||'00:00:00').slice(0,8)}`;
+
+/* cache helpers */
+function cacheGet(key, maxAgeMs){
+  try{ const raw=JSON.parse(localStorage.getItem(key)||'null'); if(!raw) return null; if(Date.now()-raw.t>maxAgeMs) return null; return raw.v; }catch{return null;}
+}
+function cacheSet(key, v){ localStorage.setItem(key, JSON.stringify({ t:Date.now(), v })); }
+
+/** ===== fetch + api (timeout + retry + minimal overlay) ===== */
+async function fetchJSON(url, options={}, timeoutMs=15000){
+  const controller = new AbortController();
+  const id = setTimeout(()=>controller.abort(), timeoutMs);
+  try{
+    const res = await fetch(url, { ...options, signal: controller.signal, headers:{'Content-Type':'text/plain;charset=utf-8', ...(options.headers||{})} });
+    const text = await res.text();
+    try { return JSON.parse(text); } catch{ return { ok:false, error:'NON_JSON', raw:text }; }
+  }catch(e){ return { ok:false, error:'NETWORK', message:String(e&&e.message||e) }; }
+  finally{ clearTimeout(id); }
+}
+async function api(path, payload={}, useToken=true, withOverlay=false){
+  const body = { path, payload }; if (useToken && token) body.token = token;
+  if (withOverlay) showOverlay(true);
+
+  const isList = /\/list$/.test(path) || path.endsWith('transactions/list');
+  try{
+    const call = ()=> fetchJSON(API_URL, { method:'POST', body: JSON.stringify(body) }, 15000);
+    let j = await call();
+    if ((!j.ok && (j.error==='NETWORK' || j.error==='NON_JSON')) && isList) j = await call();
+
+    if (!j.ok && (j.error==='BAD_TOKEN' || j.status===401)){
+      showOverlay(false);
+      localStorage.removeItem('fin_token'); token='';
+      toast('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่', false);
+    }
+    return j;
+  } finally { if (withOverlay) showOverlay(false); }
+}
+
+/** ====== LIFF auto login ====== */
+async function ensureTokenViaLIFF(){
+  if (token){ $('#who').textContent = displayName || ''; return true; }
+  await liff.init({ liffId: LIFF_ID });
+  if (!liff.isLoggedIn()){ liff.login({ redirectUri: location.href }); return false; }
+  let prof; try{ prof = await liff.getProfile(); }catch{ toast('อ่านโปรไฟล์ LINE ไม่ได้', false); return false; }
+  const r = await api('liff/link_or_login', { line_user_id: prof.userId, display_name: prof.displayName||'' }, false);
+  if (!r.ok){ toast(r.message || 'เกิดข้อผิดพลาด', false); return false; }
+
+  if (r.need_verification){
+    $('#who').textContent = prof.displayName || '';
+    toast('ยังไม่ผูกบัญชี กรุณาไปผูกบัญชีก่อน', false);
+    return false;
+  }
+  token = r.token; displayName = r.display_name || prof.displayName || '';
+  localStorage.setItem('fin_token', token);
+  localStorage.setItem('fin_name', displayName);
+  $('#who').textContent = displayName;
+  return true;
+}
+
+/** ====== CATEGORIES & DEBTS ====== */
+function _isDebtFlowCat(c){ const n=String(c?.name_th||'').trim(); return n==='จ่ายหนี้' || n==='กู้หนี้'; }
+function _isWithdrawIncomeName(name){ const s=String(name||''); return /ถอน.*ออม|ออม.*ถอน|ถอนออม|ถอนเงินออม|withdraw.*(save|saving)|saving.*withdraw/i.test(s); }
+
+async function loadCategoriesAll(){
+  const c = cacheGet('fin_cats', 6*60*60*1000);
+  if (c){ cats=c; withdrawIncomeIds = new Set((c.income||[]).filter(x=>_isWithdrawIncomeName(x.name_th)).map(x=>x.category_id)); return; }
+  const out = {};
+  for (const t of ['income','expense','saving']){
+    const r = await api('categories/list', { type:t }, true);
+    out[t] = r.ok ? (r.items||[]) : [];
+  }
+  cats = out;
+  withdrawIncomeIds = new Set((cats.income||[]).filter(x=>_isWithdrawIncomeName(x.name_th)).map(x=>x.category_id));
+  cacheSet('fin_cats', out);
+}
+async function loadDebtsCache(){
+  const c = cacheGet('fin_debts', 6*60*60*1000);
+  if (c){ debtsCache=c; fillDebtPickers(); return; }
+  const r = await api('debts/list', {}, true);
+  debtsCache = r.ok ? (r.items||[]) : [];
+  cacheSet('fin_debts', debtsCache);
+  fillDebtPickers();
+}
+
+function populateCatSelect(){
+  const t = $('#txType').value;
+  const sel = $('#txCat'); sel.innerHTML='';
+  (cats[t]||[]).filter(c=>!_isDebtFlowCat(c)).forEach(c=>{
+    const o=document.createElement('option'); o.value=c.category_id; o.textContent=c.name_th; sel.appendChild(o);
+  });
+  if (!sel.options.length){ const o=document.createElement('option'); o.value=''; o.textContent='— ไม่มีหมวด —'; sel.appendChild(o); }
+}
+function fillDebtPickers(){
+  const el = $('#txDebt'); if (!el) return; const keep=el.value;
+  el.innerHTML=''; (debtsCache||[]).forEach(d=>{ const o=document.createElement('option'); o.value=d.debt_id; o.textContent=d.lender_name||d.debt_id; el.appendChild(o); });
+  if (keep) el.value=keep;
+}
+
+/** ===== TYPE SWITCH ===== */
+function setType(type){
+  $('#txType').value = type;
+  $('#btnTypeExp').classList.toggle('active', type==='expense');
+  $('#btnTypeInc').classList.toggle('active', type==='income');
+  $('#btnTypeSav').classList.toggle('active', type==='saving');
+  $('#btnTypeDebtRepay').classList.toggle('active', type==='debt_repay');
+  $('#btnTypeDebtBorrow').classList.toggle('active', type==='debt_borrow');
+
+  const debtMode = (type==='debt_repay' || type==='debt_borrow');
+  $('#colCat').classList.toggle('hide', debtMode);
+  $('#colDebt').classList.toggle('hide', !debtMode);
+
+  const isRepay = (type==='debt_repay');
+  $('#colDebtRepayFields').classList.toggle('hide', !isRepay);
+  $('#colAmount').classList.toggle('hide', isRepay);
+
+  if (!debtMode) populateCatSelect(); else fillDebtPickers();
+}
+$('#btnTypeExp').addEventListener('click', ()=> setType('expense'));
+$('#btnTypeInc').addEventListener('click', ()=> setType('income'));
+$('#btnTypeSav').addEventListener('click', ()=> setType('saving'));
+$('#btnTypeDebtRepay').addEventListener('click', ()=> setType('debt_repay'));
+$('#btnTypeDebtBorrow').addEventListener('click', ()=> setType('debt_borrow'));
+
+/** ===== ADD / SAVE ===== */
+function normalizeAmount(v){ const n=Number(v); if(!isFinite(n)||n<=0) return NaN; return Math.round(n*100)/100; }
+function clearAddForm(){
+  $('#txDate').value = todayISO();
+  $('#txAmount').value=''; $('#txNote').value='';
+  $('#txInt').value=''; $('#txPrin').value='';
+  if ($('#txCat').options.length) $('#txCat').selectedIndex=0;
+  if ($('#txDebt').options.length) $('#txDebt').selectedIndex=0;
+}
+async function saveTx(){
+  const type = $('#txType').value;
+  const date = $('#txDate').value;
+  const note = $('#txNote').value.trim();
+  if (!date){ toast('กรุณาเลือกวันที่', false); return; }
+  $('#btnSave').disabled = true;
+
+  if (type==='debt_repay' || type==='debt_borrow'){
+    const debt_id = $('#txDebt').value;
+    if (!debt_id){ toast('กรุณาเลือกเจ้าหนี้', false); $('#btnSave').disabled=false; return; }
+
+    if (type==='debt_repay'){
+      const interest = Number($('#txInt').value||0);
+      const principal = Number($('#txPrin').value||0);
+      const amount = Math.round((interest + principal) * 100)/100;
+      if (!(isFinite(amount)&&amount>0)){ toast('ใส่ดอก/ต้นให้ถูกต้อง', false); $('#btnSave').disabled=false; return; }
+      const r = await api('debts/repay', { debt_id, date, amount, interest_paid:interest, principal_paid:principal, note }, true, true);
+      $('#btnSave').disabled=false;
+      if (r.ok){ toast('บันทึกจ่ายหนี้สำเร็จ'); clearAddForm(); await loadDebtsCache(); refreshList(); }
+      else toast(r.message||'บันทึกไม่สำเร็จ', false);
+      return;
+    }else{
+      const amount = normalizeAmount($('#txAmount').value);
+      if (isNaN(amount)){ toast('จำนวนเงินไม่ถูกต้อง', false); $('#btnSave').disabled=false; return; }
+      const r = await api('debts/borrow', { debt_id, date, amount, note }, true, true);
+      $('#btnSave').disabled=false;
+      if (r.ok){ toast('บันทึกกู้หนี้สำเร็จ'); clearAddForm(); await loadDebtsCache(); refreshList(); }
+      else toast(r.message||'บันทึกไม่สำเร็จ', false);
+      return;
+    }
+  }
+
+  const amount = normalizeAmount($('#txAmount').value);
+  const category_id = $('#txCat').value;
+  if (isNaN(amount)){ toast('จำนวนเงินไม่ถูกต้อง', false); $('#btnSave').disabled=false; return; }
+  if (!category_id){ toast('กรุณาเลือกหมวด', false); $('#btnSave').disabled=false; return; }
+
+  const r = await api('transactions/create', { date, type, category_id, amount, note }, true, true);
+  $('#btnSave').disabled=false;
+  if (r.ok){ toast('บันทึกสำเร็จ'); clearAddForm(); refreshList(); }
+  else toast(r.message||'บันทึกไม่สำเร็จ', false);
+}
+$('#btnSave').addEventListener('click', saveTx);
+
+/** ===== RANGE SHORTCUTS ===== */
+function setRange(from,to){ $('#fFrom').value=from; $('#fTo').value=to; updateRangeUI(); refreshList(); }
+function setRangeDaysBack(days){ const now=new Date(); const from=toYMD(new Date(now.getFullYear(),now.getMonth(),now.getDate()-days+1)); const to=toYMD(now); setRange(from,to); }
+function ensureRangeDefaults(){
+  if (!$('#fFrom').value || !$('#fTo').value){ const mb=monthBounds(new Date()); setRange(mb.start, mb.end); }
+  else updateRangeUI();
+}
+function updateRangeUI(){
+  const f=$('#fFrom').value, t=$('#fTo').value;
+  const today=todayISO(); const mb=monthBounds(new Date());
+  const y=new Date().getFullYear();
+  const flags={
+    today:(f===today && t===today),
+    d7:(f===toYMD(new Date(new Date().setDate(new Date().getDate()-6))) && t===today),
+    d30:(f===toYMD(new Date(new Date().setDate(new Date().getDate()-29))) && t===today),
+    month:(f===mb.start && t===mb.end),
+    year:(f===`${y}-01-01` && t===`${y}-12-31`)
+  };
+  document.querySelectorAll('.chip[data-range]').forEach(ch=>{
+    const k=ch.dataset.range;
+    const on=(k==='today'&&flags.today)||(k==='7'&&flags.d7)||(k==='30'&&flags.d30)||(k==='month'&&flags.month)||(k==='year'&&flags.year);
+    ch.classList.toggle('active',on);
+  });
+  let txt='กำหนดเอง'; if(flags.today)txt='วันนี้'; else if(flags.d7)txt='7 วันล่าสุด'; else if(flags.d30)txt='30 วันล่าสุด'; else if(flags.month)txt='เดือนนี้'; else if(flags.year)txt='ปีนี้';
+  $('#rangeBadge').textContent=txt;
+}
+document.querySelectorAll('.chip[data-range]').forEach(ch=>{
+  ch.addEventListener('click', ()=>{
+    const k=ch.dataset.range;
+    if (k==='today'){ const d=todayISO(); setRange(d,d); }
+    if (k==='7') setRangeDaysBack(7);
+    if (k==='30') setRangeDaysBack(30);
+    if (k==='month'){ const mb=monthBounds(new Date()); setRange(mb.start, mb.end); }
+    if (k==='year'){ const y=new Date().getFullYear(); setRange(`${y}-01-01`, `${y}-12-31`); }
+  });
+});
+$('#fFrom').addEventListener('change', ()=>{ updateRangeUI(); refreshList(); });
+$('#fTo').addEventListener('change', ()=>{ updateRangeUI(); refreshList(); });
+$('#btnRefresh').addEventListener('click', ()=> refreshList());
+
+/** ===== LIST + EDIT/DELETE ===== */
+async function refreshList(){
+  if (!token){ toast('ยังไม่ได้รับสิทธิ์เข้าใช้งาน', false); return; }
+  const from=$('#fFrom').value, to=$('#fTo').value;
+
+  const slow = setTimeout(()=> toast('กำลังโหลดรายการ...', true), 800);
+  const r = await api('transactions/list', { from, to, type:'all' }, true, false);
+  clearTimeout(slow);
+
+  if (!r.ok){ toast('โหลดรายการไม่สำเร็จ', false); return; }
+  lastItems = (r.items||[]).map(x=> ({...x, amount:+x.amount}));
+  renderTable(lastItems);
+}
+function renderTable(items){
+  const tb=$('#tblBody'); tb.innerHTML='';
+  const sorted = items.slice().sort((a,b)=> safeKey(b).localeCompare(safeKey(a)));
+  $('#emptyList').style.display = sorted.length? 'none':'block';
+
+  const mapCat = {}; [...(cats.expense||[]), ...(cats.income||[]), ...(cats.saving||[])].forEach(c=> mapCat[c.category_id]=c.name_th);
+
+  for (const x of sorted){
+    let badge='badge-exp', typeTxt='รายจ่าย';
+    if (x.type==='income'){ badge='badge-inc'; typeTxt='รายรับ'; }
+    if (x.type==='saving'){ badge='badge-sav'; typeTxt='ออมเงิน'; }
+    if (x.type==='debt'){ badge='badge-debt'; } // เผื่อเซิร์ฟเวอร์ใช้ tag อื่น
+
+    const catName = mapCat[x.category_id] || x.category_name || x.category_id || '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td title="${esc((x.date||'').slice(0,10))}">${esc((x.date||'').slice(0,10))}</td>
+      <td><span class="badge ${badge}">${typeTxt}</span></td>
+      <td>${esc(catName)}</td>
+      <td class="right">${fmt(x.amount)}</td>
+      <td>${esc(x.note||'')}</td>
+      <td>
+        <div style="display:flex; gap:.5rem">
+          <button class="btn-ghost" data-act="edit" data-id="${esc(x.tx_id||'')}">แก้ไข</button>
+          <button class="btn-danger" data-act="del"  data-id="${esc(x.tx_id||'')}">ลบ</button>
+        </div>
+      </td>`;
+    tb.appendChild(tr);
+  }
+}
+$('#tblBody').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-act]'); if (!btn) return;
+  const id = btn.getAttribute('data-id'); const act = btn.getAttribute('data-act');
+  if (act==='edit') openEditById(id); if (act==='del') confirmDelete(id);
+});
+
+function populateEditCatSelect(){ const t=$('#editType').value; const sel=$('#editCat'); sel.innerHTML=''; (cats[t]||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c.category_id; o.textContent=c.name_th; sel.appendChild(o); }); }
+
+async function openEditById(txId){
+  if (!txId){ toast('ไม่พบรหัสรายการ', false); return; }
+  let it = lastItems.find(x=> String(x.tx_id)===String(txId));
+  if (!it){
+    const r = await api('transactions/list', { from: $('#fFrom').value, to: $('#fTo').value, type:'all' }, true);
+    if (!r.ok){ toast('โหลดรายการไม่สำเร็จ', false); return; }
+    lastItems = (r.items||[]); it = lastItems.find(x=> String(x.tx_id)===String(txId));
+    if (!it){ toast('รายการหายไปแล้ว', false); return; }
+  }
+  // mapping ชื่อหมวดเพื่อเช็คว่าเป็น “จ่ายหนี้” หรือไม่
+  const allCats = [...(cats.expense||[]), ...(cats.income||[]), ...(cats.saving||[])];
+  const catMap = Object.fromEntries(allCats.map(c => [c.category_id, c.name_th]));
+  const catName = catMap[it.category_id] || it.category_name || '';
+  const isDebtRepay = catName.includes('จ่ายหนี้');
+
+  $('#editBackdrop').dataset.isDebtRepay = isDebtRepay;
+
+  $('#editTxId').value = it.tx_id;
+  $('#editDate').value = (it.date||'').slice(0,10);
+  $('#editType').value = it.type;
+  populateEditCatSelect();
+  $('#editCat').value = it.category_id;
+  $('#editNote').value = it.note||'';
+
+  $('#editColType').classList.toggle('hide', isDebtRepay);
+  $('#editColCat').classList.toggle('hide', isDebtRepay);
+  $('#editColAmount').classList.toggle('hide', isDebtRepay);
+  $('#editColDebtRepayFields').classList.toggle('hide', !isDebtRepay);
+
+  if (isDebtRepay){
+    // จำนวนรวมคำนวณอัตโนมัติจากช่องดอก/ต้น
+    $('#editAmount').readOnly = true;
+    const updateTotal = ()=>{ const prin=Number($('#editPrin').value)||0; const intr=Number($('#editInt').value)||0; $('#editAmount').value=(prin+intr).toFixed(2); };
+    $('#editPrin').oninput = updateTotal; $('#editInt').oninput = updateTotal;
+
+    // ถ้า backend เก็บ debt_tx_id มากับรายการ สามารถดึงรายละเอียดมาย้อนใส่ได้
+    if (it.debt_tx_id){
+      const r = await api('debts/tx/get', { tx_id: it.debt_tx_id }, true, true);
+      if (r.ok && r.item){ $('#editPrin').value=r.item.principal_paid||'0'; $('#editInt').value=r.item.interest_paid||'0'; }
+      updateTotal();
+    }else{
+      // fallback: ให้ผู้ใช้ใส่เอง (เราเติมรวมให้จาก amount เดิมเพื่อเป็นไกด์)
+      $('#editPrin').value = (Number(it.amount)||0).toFixed(2);
+      $('#editInt').value  = '0.00';
+      updateTotal();
+    }
+  }else{
+    $('#editAmount').readOnly = false;
+    $('#editAmount').value = String(it.amount);
+  }
+
+  $('#editBackdrop').classList.add('show');
+  $('#editBackdrop').setAttribute('aria-hidden','false');
+}
+function closeEdit(){ $('#editBackdrop').classList.remove('show'); $('#editBackdrop').setAttribute('aria-hidden','true'); }
+$('#btnCancel').addEventListener('click', closeEdit);
+$('#editType').addEventListener('change', populateEditCatSelect);
+
+$('#btnUpdate').addEventListener('click', async ()=>{
+  const tx_id = $('#editTxId').value;
+  const isDebtRepay = $('#editBackdrop').dataset.isDebtRepay === 'true';
+  $('#btnUpdate').disabled = true;
+
+  let r;
+  if (isDebtRepay){
+    const principal_paid = Number($('#editPrin').value||0);
+    const interest_paid  = Number($('#editInt').value||0);
+    const amount = principal_paid + interest_paid;
+    if (!tx_id || !isFinite(amount) || amount<=0){ toast('ข้อมูลเงินต้น/ดอกเบี้ยไม่ถูกต้อง', false); $('#btnUpdate').disabled=false; return; }
+
+    // ต้องมี debt_tx_id ที่ผูกกันมา (ฝั่ง GAS ส่งมาใน transactions/list)
+    const originalItem = lastItems.find(it => String(it.tx_id)===String(tx_id));
+    const debt_tx_id = originalItem ? originalItem.debt_tx_id : '';
+    if (!debt_tx_id){ toast('ไม่พบรหัสธุรกรรมหนี้ที่เชื่อมกัน', false); $('#btnUpdate').disabled=false; return; }
+
+    r = await api('debts/tx/update', {
+      debt_tx_id,
+      date: $('#editDate').value,
+      note: $('#editNote').value.trim(),
+      principal_paid: Math.round(principal_paid*100)/100,
+      interest_paid : Math.round(interest_paid *100)/100
+    }, true, true);
+  }else{
+    const amount = Number($('#editAmount').value);
+    if (!tx_id || !isFinite(amount) || amount<=0){ toast('ข้อมูลไม่ครบหรือจำนวนเงินไม่ถูกต้อง', false); $('#btnUpdate').disabled=false; return; }
+    r = await api('transactions/update', {
+      tx_id,
+      date: $('#editDate').value,
+      type: $('#editType').value,
+      category_id: $('#editCat').value,
+      amount: Math.round(amount*100)/100,
+      note: $('#editNote').value.trim()
+    }, true, true);
+  }
+
+  $('#btnUpdate').disabled = false;
+  if (r.ok){ toast('บันทึกแก้ไขสำเร็จ'); closeEdit(); refreshList(); }
+  else toast(r.message||'อัปเดตไม่สำเร็จ', false);
+});
+
+async function confirmDelete(tx_id){
+  if (!tx_id) return;
+  if (!confirm('ยืนยันการลบรายการนี้?')) return;
+  showOverlay(true);
+  const r = await api('transactions/delete', { tx_id }, true);
+  showOverlay(false);
+  if (r.ok){ toast('ลบสำเร็จ'); refreshList(); }
+  else toast(r.message||'ลบไม่สำเร็จ', false);
+}
+
+/** ===== INIT ===== */
+(async function init(){
+  $('#txDate').value = todayISO();
+  setType('expense');
+
+  const mb = monthBounds(new Date());
+  $('#fFrom').value = mb.start; $('#fTo').value = mb.end; updateRangeUI();
+
+  showOverlay(true);
+  let ok=false;
+  try{ ok = await ensureTokenViaLIFF(); }catch(e){ console.error(e); toast('เริ่มต้นผ่าน LIFF ไม่สำเร็จ', false); }
+  if (ok){
+    // โหลดแบบขนาน
+    await Promise.all([ loadCategoriesAll(), loadDebtsCache() ]);
+    populateCatSelect(); fillDebtPickers();
+    await refreshList();
+  }
+  showOverlay(false);
+})();
+</script>
+</body>
+</html>
