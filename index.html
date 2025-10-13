@@ -96,106 +96,121 @@
       <div class="you" id="who"></div>
     </div>
 
-    <!-- ===== ฟอร์มบันทึก + หนี้ (คงไว้) ===== -->
-    <div class="card" role="region" aria-label="บันทึกธุรกรรม">
+    <!-- ===== ฟอร์มผูกบัญชี (ใหม่) ===== -->
+    <div id="linkBox" class="card hide" role="region" aria-label="ผูกบัญชี">
+      <div class="muted" style="margin-bottom:.5rem">ผูกบัญชีครั้งเดียวเพื่อใช้งานผ่าน LINE ได้อัตโนมัติ</div>
       <div class="row">
-        <div class="col">
-          <label for="txDate">วันที่</label>
-          <input id="txDate" type="date" />
-        </div>
-        <div class="col">
-          <label>ประเภท</label>
-          <div class="seg">
-            <button class="segbtn" data-type="expense">รายจ่าย</button>
-            <button class="segbtn" data-type="income">รายรับ</button>
-            <button class="segbtn" data-type="saving">ออมเงิน</button>
-            <span class="muted" style="align-self:center">|</span>
-            <button class="segbtn" data-type="debt_repay" title="จ่ายหนี้">จ่ายหนี้</button>
-            <button class="segbtn" data-type="debt_borrow" title="กู้หนี้">กู้หนี้</button>
-          </div>
-          <select id="txType" class="hide" aria-hidden="true">
-            <option value="expense" selected>รายจ่าย</option>
-            <option value="income">รายรับ</option>
-            <option value="saving">ออมเงิน</option>
-            <option value="debt_repay">จ่ายหนี้</option>
-            <option value="debt_borrow">กู้หนี้</option>
-          </select>
-        </div>
-
-        <div class="col" id="colCat">
-          <label for="txCat">หมวดหมู่</label>
-          <select id="txCat"></select>
-          <div class="help">* เพิ่มหมวดในหน้าหลักของคุณได้ตามเดิม</div>
-        </div>
-        <div class="col" id="colAmount">
-          <label for="txAmount">จำนวนเงิน (บาท)</label>
-          <input id="txAmount" type="number" step="0.01" inputmode="decimal" placeholder="0.00" />
-        </div>
-
-        <!-- เลือกเจ้าหนี้ (คงไว้) -->
-        <div class="col hide" id="colDebt">
-          <label for="txDebt">เลือกเจ้าหนี้</label>
-          <div class="row" style="margin:0; gap:.5rem">
-            <div class="col" style="min-width:200px"><select id="txDebt"></select></div>
-          </div>
-          <div class="help">* รายการนี้ดึงจากรายชื่อเจ้าหนี้ที่มีอยู่</div>
-        </div>
-        <div class="col hide" id="colDebtRepayFields" style="flex:1 1 100%">
-          <label>รายละเอียดการจ่ายหนี้</label>
-          <div class="row" style="gap:.5rem; margin:0">
-            <div class="col"><input id="txInt" type="number" step="0.01" placeholder="จ่ายดอก (บาท)" /></div>
-            <div class="col"><input id="txPrin" type="number" step="0.01" placeholder="จ่ายต้น (บาท)" /></div>
-          </div>
-          <div class="help">* ระบบจะบันทึกยอดรวม = จ่ายดอก + จ่ายต้น</div>
-        </div>
+        <div class="col"><label for="inpUser">User ID</label><input id="inpUser" placeholder="ของคุณ"/></div>
+        <div class="col"><label for="inpPin">PIN</label><input id="inpPin" type="password" placeholder="รหัส"/></div>
       </div>
-
-      <div class="row" style="align-items:flex-end; gap:1rem">
-        <div class="col" style="flex:1 1 0">
-          <label for="txNote">หมายเหตุ</label>
-          <input id="txNote" placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)" maxlength="500" />
-        </div>
-        <div class="col" style="flex:0 0 auto">
-          <button id="btnSave" class="btn-green" style="min-width:180px">บันทึกรายการ</button>
-        </div>
+      <div style="display:flex; gap:.5rem; justify-content:flex-end">
+        <button id="btnLink" class="btn-ghost">ผูกบัญชี</button>
       </div>
     </div>
 
-    <!-- ===== รายการย้อนหลัง (คงไว้) ===== -->
-    <div class="card" role="region" aria-label="รายการย้อนหลัง">
-      <div class="row">
-        <div class="col"><label for="fFrom">จาก</label><input id="fFrom" type="date" /></div>
-        <div class="col"><label for="fTo">ถึง</label><input id="fTo" type="date" /></div>
-        <div class="col">
-          <label>&nbsp;</label>
-          <div class="chips">
-            <div class="chip" data-range="today">วันนี้</div>
-            <div class="chip" data-range="7">7 วัน</div>
-            <div class="chip" data-range="30">30 วัน</div>
-            <div class="chip" data-range="month">เดือนนี้</div>
-            <div class="chip" data-range="year">ปีนี้</div>
-            <button id="btnRefresh" class="btn-blue" style="margin-left:auto">รีเฟรช</button>
+    <!-- ===== ทั้งแอป (เดิม) ห่อด้วย #app เพื่อสลับโชว์/ซ่อน ===== -->
+    <div id="app" class="">
+      <!-- ===== ฟอร์มบันทึก + หนี้ (คงไว้) ===== -->
+      <div class="card" role="region" aria-label="บันทึกธุรกรรม">
+        <div class="row">
+          <div class="col">
+            <label for="txDate">วันที่</label>
+            <input id="txDate" type="date" />
           </div>
-          <div class="muted" style="margin-top:.4rem">กำลังดู: <b id="rangeBadge">กำหนดเอง</b></div>
+          <div class="col">
+            <label>ประเภท</label>
+            <div class="seg">
+              <button class="segbtn" data-type="expense">รายจ่าย</button>
+              <button class="segbtn" data-type="income">รายรับ</button>
+              <button class="segbtn" data-type="saving">ออมเงิน</button>
+              <span class="muted" style="align-self:center">|</span>
+              <button class="segbtn" data-type="debt_repay" title="จ่ายหนี้">จ่ายหนี้</button>
+              <button class="segbtn" data-type="debt_borrow" title="กู้หนี้">กู้หนี้</button>
+            </div>
+            <select id="txType" class="hide" aria-hidden="true">
+              <option value="expense" selected>รายจ่าย</option>
+              <option value="income">รายรับ</option>
+              <option value="saving">ออมเงิน</option>
+              <option value="debt_repay">จ่ายหนี้</option>
+              <option value="debt_borrow">กู้หนี้</option>
+            </select>
+          </div>
+
+          <div class="col" id="colCat">
+            <label for="txCat">หมวดหมู่</label>
+            <select id="txCat"></select>
+            <div class="help">* เพิ่มหมวดในหน้าหลักของคุณได้ตามเดิม</div>
+          </div>
+          <div class="col" id="colAmount">
+            <label for="txAmount">จำนวนเงิน (บาท)</label>
+            <input id="txAmount" type="number" step="0.01" inputmode="decimal" placeholder="0.00" />
+          </div>
+
+          <!-- เลือกเจ้าหนี้ (คงไว้) -->
+          <div class="col hide" id="colDebt">
+            <label for="txDebt">เลือกเจ้าหนี้</label>
+            <div class="row" style="margin:0; gap:.5rem">
+              <div class="col" style="min-width:200px"><select id="txDebt"></select></div>
+            </div>
+            <div class="help">* รายการนี้ดึงจากรายชื่อเจ้าหนี้ที่มีอยู่</div>
+          </div>
+          <div class="col hide" id="colDebtRepayFields" style="flex:1 1 100%">
+            <label>รายละเอียดการจ่ายหนี้</label>
+            <div class="row" style="gap:.5rem; margin:0">
+              <div class="col"><input id="txInt" type="number" step="0.01" placeholder="จ่ายดอก (บาท)" /></div>
+              <div class="col"><input id="txPrin" type="number" step="0.01" placeholder="จ่ายต้น (บาท)" /></div>
+            </div>
+            <div class="help">* ระบบจะบันทึกยอดรวม = จ่ายดอก + จ่ายต้น</div>
+          </div>
+        </div>
+
+        <div class="row" style="align-items:flex-end; gap:1rem">
+          <div class="col" style="flex:1 1 0">
+            <label for="txNote">หมายเหตุ</label>
+            <input id="txNote" placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)" maxlength="500" />
+          </div>
+          <div class="col" style="flex:0 0 auto">
+            <button id="btnSave" class="btn-green" style="min-width:180px">บันทึกรายการ</button>
+          </div>
         </div>
       </div>
 
-      <div class="table-viewport">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:110px">วันที่</th>
-              <th style="width:140px">ประเภท</th>
-              <th>หมวด/เจ้าหนี้</th>
-              <th class="right" style="width:130px">จำนวน</th>
-              <th>หมายเหตุ</th>
-              <th style="width:160px">จัดการ</th>
-            </tr>
-          </thead>
-          <tbody id="tblBody"></tbody>
-        </table>
+      <!-- ===== รายการย้อนหลัง (คงไว้) ===== -->
+      <div class="card" role="region" aria-label="รายการย้อนหลัง">
+        <div class="row">
+          <div class="col"><label for="fFrom">จาก</label><input id="fFrom" type="date" /></div>
+          <div class="col"><label for="fTo">ถึง</label><input id="fTo" type="date" /></div>
+          <div class="col">
+            <label>&nbsp;</label>
+            <div class="chips">
+              <div class="chip" data-range="today">วันนี้</div>
+              <div class="chip" data-range="7">7 วัน</div>
+              <div class="chip" data-range="30">30 วัน</div>
+              <div class="chip" data-range="month">เดือนนี้</div>
+              <div class="chip" data-range="year">ปีนี้</div>
+              <button id="btnRefresh" class="btn-blue" style="margin-left:auto">รีเฟรช</button>
+            </div>
+            <div class="muted" style="margin-top:.4rem">กำลังดู: <b id="rangeBadge">กำหนดเอง</b></div>
+          </div>
+        </div>
+
+        <div class="table-viewport">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:110px">วันที่</th>
+                <th style="width:140px">ประเภท</th>
+                <th>หมวด/เจ้าหนี้</th>
+                <th class="right" style="width:130px">จำนวน</th>
+                <th>หมายเหตุ</th>
+                <th style="width:160px">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="tblBody"></tbody>
+          </table>
+        </div>
+        <div id="emptyList" class="muted" style="margin-top:.5rem; display:none">ยังไม่มีรายการ</div>
       </div>
-      <div id="emptyList" class="muted" style="margin-top:.5rem; display:none">ยังไม่มีรายการ</div>
     </div>
   </div>
 
@@ -290,7 +305,7 @@ async function api(path, payload={}, useToken=true, overlay=false){
   finally{ if (overlay) showOverlay(false); }
 }
 
-/** ====== LIFF ====== */
+/** ====== LIFF (พร้อม “ผูกบัญชีครั้งแรก”) ====== */
 function waitForLiffReady(timeoutMs=5000){
   return new Promise(res=>{
     if (window.liff){ return res(true); }
@@ -301,6 +316,7 @@ function waitForLiffReady(timeoutMs=5000){
     }, 30);
   });
 }
+
 async function ensureTokenViaLIFF(){
   const okReady = await waitForLiffReady();
   if (!okReady){ toast('LIFF ยังไม่พร้อม โปรดรีเฟรช', false); log('LIFF not ready'); return false; }
@@ -315,17 +331,55 @@ async function ensureTokenViaLIFF(){
 
   const r = await api('liff/link_or_login', { line_user_id: prof.userId, display_name: prof.displayName||'' }, false);
   if (!r.ok){ toast(r.message || 'เกิดข้อผิดพลาด', false); log('link_or_login fail', r); return false; }
+
   if (r.need_verification){
+    // ยังไม่เคยผูก → โชว์ฟอร์มผูก และซ่อนแอป
     $('#who').textContent = prof.displayName || '';
-    toast('ยังไม่ผูกบัญชี กรุณาไปผูกก่อน', false);
+    $('#linkBox').classList.remove('hide');
+    $('#app').classList.add('hide');
     return false;
   }
+
+  // เคยผูกแล้ว → รับ token และเข้าแอปได้เลย
   token = r.token; displayName = r.display_name || prof.displayName || '';
   localStorage.setItem('fin_token', token);
   localStorage.setItem('fin_name', displayName);
   $('#who').textContent = displayName;
+  $('#linkBox').classList.add('hide');
+  $('#app').classList.remove('hide');
   return true;
 }
+
+// กด “ผูกบัญชี” ด้วย User+PIN
+$('#btnLink')?.addEventListener('click', async ()=>{
+  const user_id = $('#inpUser').value.trim();
+  const pin     = $('#inpPin').value.trim();
+  if (!user_id || !pin){ toast('กรอก User และ PIN ให้ครบ', false); return; }
+
+  let prof; try{ prof = await liff.getProfile(); }catch{ toast('อ่านโปรไฟล์ LINE ไม่ได้', false); return; }
+
+  showOverlay(true);
+  const r = await api('liff/link_or_login', {
+    line_user_id: prof.userId,
+    display_name: prof.displayName || '',
+    user_id, pin
+  }, false);
+  showOverlay(false);
+
+  if (!r.ok){ toast(r.message || 'ผูกบัญชีไม่สำเร็จ', false); return; }
+
+  token = r.token; displayName = r.display_name || user_id;
+  localStorage.setItem('fin_token', token);
+  localStorage.setItem('fin_name', displayName);
+  $('#who').textContent = displayName;
+  $('#linkBox').classList.add('hide');
+  $('#app').classList.remove('hide');
+
+  // โหลดข้อมูลที่จำเป็นหลังผูกสำเร็จ
+  await Promise.all([loadCategoriesAll(), loadDebtsList()]);
+  populateCatSelect();
+  refreshList();
+});
 
 /** ====== Categories ====== */
 async function loadCategoriesAll(){
@@ -350,7 +404,7 @@ function populateEditCatSelect(){
   fillSelect($('#editCat'), (cats[t]||[]), c=>c.category_id, c=>c.name_th||c.category_id);
 }
 
-/** ====== Debts: โหลดเฉพาะรายชื่อเพื่อให้ฟอร์มใช้งาน (ตัดสรุป/ตารางออก) ====== */
+/** ====== Debts (รายชื่อ) ====== */
 async function loadDebtsList(){
   const r = await api('debts/list', {}, true);
   debtsCache = r.ok ? (r.items||[]) : [];
@@ -372,7 +426,7 @@ function setType(type){
   if (!debtMode) populateCatSelect();
 }
 
-/** ====== Save Transaction (คงตรรกะเดิม) ====== */
+/** ====== Save Transaction ====== */
 function normalizeAmount(v){ const n=Number(v); return (isFinite(n) && n>0) ? Math.round(n*100)/100 : NaN; }
 function clearForm(){
   $('#txDate').value = todayISO();
@@ -427,7 +481,7 @@ async function saveTx(){
 }
 $('#btnSave').addEventListener('click', saveTx);
 
-/** ====== List + Edit/Delete (คงไว้) ====== */
+/** ====== List + Edit/Delete ====== */
 function renderTable(items){
   const tb = $('#tblBody'); tb.innerHTML='';
   const sorted = items.slice().sort((a,b)=> safeKey(b).localeCompare(safeKey(a)));
@@ -643,14 +697,17 @@ $('#fTo').addEventListener('change',   ()=>{ updateRangeUI(); debouncedRefresh()
     const from = $('#fFrom').value, to = $('#fTo').value;
     const [_, __, rTx] = await Promise.all([
       loadCategoriesAll(),
-      loadDebtsList(), // เบากว่าเดิม
+      loadDebtsList(),
       api('transactions/list', { from, to, type:'all' }, true),
     ]);
     if (rTx.ok){ lastItems = (rTx.items||[]).map(x=> ({...x, amount:+x.amount})); renderTable(lastItems); }
     populateCatSelect();
   }else{
+    // ถ้ายังไม่ได้ผูก: แสดงฟอร์มผูก, ซ่อนแอป
+    $('#linkBox').classList.remove('hide');
+    $('#app').classList.add('hide');
     $('#emptyList').style.display = 'block';
-    $('#emptyList').textContent = 'ยังไม่ได้เข้าสู่ระบบผ่าน LINE (LIFF)';
+    $('#emptyList').textContent = 'ยังไม่ได้เข้าสู่ระบบ/ผูกบัญชีผ่าน LINE';
   }
   showOverlay(false);
 })();
