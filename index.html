@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>FIN-JOD · บันทึก + หนี้ + รายการย้อนหลัง (Fast · LIFF-safe)</title>
+  <title>FIN-JOD · บันทึก + รายการย้อนหลัง (Lite/เร็ว)</title>
 
-  <!-- Fonts (ไม่บล็อกการวาด) -->
+  <!-- Fonts: ไม่บล็อกการวาด -->
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
@@ -76,27 +76,21 @@
     .spinner{ width:42px; height:42px; border-radius:50%; border:5px solid #3a3a3a; border-top-color:#fff; animation:spin 1s linear infinite }
     @keyframes spin{ to{ transform:rotate(360deg) } }
 
-    .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:150 }
-    .modal-backdrop.show{ display:flex }
-    .modal{ width:min(640px,96vw); background:#242424; border:1px solid var(--line); border-radius:16px; padding:1rem 1rem 1.25rem }
-    .modal .title{ font-weight:700; margin-bottom:.75rem }
-    .modal .actions{ display:flex; gap:.5rem; justify-content:flex-end; margin-top:.75rem }
-
     .help{ font-size:.9rem; color:var(--muted) }
     .hide{ display:none }
   </style>
 
-  <!-- LIFF SDK (defer) -->
+  <!-- LIFF SDK -->
   <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
   <div class="wrap">
     <div class="head">
-      <h1 style="margin:0">FIN-JOD · หน้าเดียวครบ (Fast)</h1>
+      <h1 style="margin:0">FIN-JOD · หน้าเดียวครบ (Lite)</h1>
       <div class="you" id="who"></div>
     </div>
 
-    <!-- ===== ฟอร์มบันทึก + หนี้ ===== -->
+    <!-- ===== บันทึกรายการ + โหมดหนี้ (เลือกเจ้าหนี้อย่างเดียว) ===== -->
     <div class="card" role="region" aria-label="บันทึกธุรกรรม">
       <div class="row">
         <div class="col">
@@ -122,6 +116,7 @@
           </select>
         </div>
 
+        <!-- ประเภทปกติ -->
         <div class="col" id="colCat">
           <label for="txCat">หมวดหมู่</label>
           <select id="txCat"></select>
@@ -132,15 +127,11 @@
           <input id="txAmount" type="number" step="0.01" inputmode="decimal" placeholder="0.00" />
         </div>
 
+        <!-- โหมดหนี้: เลือกเจ้าหนี้เท่านั้น -->
         <div class="col hide" id="colDebt">
           <label for="txDebt">เลือกเจ้าหนี้</label>
-          <div class="row" style="margin:0; gap:.5rem">
-            <div class="col" style="min-width:200px"><select id="txDebt"></select></div>
-            <div class="col" style="flex:0 0 auto">
-              <button id="btnAddDebtOpen" class="btn-blue">+ เพิ่มเจ้าหนี้</button>
-            </div>
-          </div>
-          <div class="help">* รายการนี้ดึงจากรายชื่อเจ้าหนี้ด้านล่าง</div>
+          <select id="txDebt"></select>
+          <div class="help">* จะทำหน้า “เพิ่ม/แก้ไข/ปิดบัญชี เจ้าหนี้” แยกภายหลัง</div>
         </div>
         <div class="col hide" id="colDebtRepayFields" style="flex:1 1 100%">
           <label>รายละเอียดการจ่ายหนี้</label>
@@ -160,33 +151,6 @@
         <div class="col" style="flex:0 0 auto">
           <button id="btnSave" class="btn-green" style="min-width:180px">บันทึกรายการ</button>
         </div>
-      </div>
-    </div>
-
-    <!-- ===== จัดการเจ้าหนี้ย่อ ===== -->
-    <div class="card" role="region" aria-label="จัดการเจ้าหนี้">
-      <div class="muted" style="margin-bottom:.35rem">เพิ่ม/แก้ไข/ปิดบัญชี เจ้าหนี้ (ย่อ)</div>
-      <div class="row" id="debtAddRow" style="margin-bottom:.75rem">
-        <div class="col"><label for="dName">ชื่อเจ้าหนี้</label><input id="dName" placeholder="เช่น บัตร X / เพื่อน A" /></div>
-        <div class="col"><label for="dRate">อัตราดอกเบี้ยต่อปี (%)</label><input id="dRate" type="number" step="0.01" placeholder="เช่น 18" /></div>
-        <div class="col"><label for="dPrincipal">ยอดตั้งต้น (ไม่บังคับ)</label><input id="dPrincipal" type="number" step="0.01" placeholder="เช่น 10000" /></div>
-        <div class="col" style="align-self:flex-end"><button id="btnAddDebt" class="btn-blue">+ เพิ่มเจ้าหนี้</button></div>
-      </div>
-      <div class="table-viewport">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:240px">เจ้าหนี้</th>
-              <th class="right" style="width:110px">% ต่อปี</th>
-              <th class="right" style="width:140px">เงินต้น</th>
-              <th class="right" style="width:140px">ดอกค้าง</th>
-              <th class="right" style="width:150px">รวมที่ต้องจ่าย</th>
-              <th style="width:120px">อัปเดตถึง</th>
-              <th style="width:220px">จัดการ</th>
-            </tr>
-          </thead>
-          <tbody id="tblDebts"></tbody>
-        </table>
       </div>
     </div>
 
@@ -225,66 +189,6 @@
         </table>
       </div>
       <div id="emptyList" class="muted" style="margin-top:.5rem; display:none">ยังไม่มีรายการ</div>
-    </div>
-  </div>
-
-  <!-- ===== Modals ===== -->
-  <div id="editBackdrop" class="modal-backdrop" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
-      <div id="editTitle" class="title">แก้ไขรายการ</div>
-      <input id="editTxId" type="hidden">
-
-      <div class="row">
-        <div class="col"><label for="editDate">วันที่</label><input id="editDate" type="date"></div>
-
-        <div class="col" id="editColType">
-          <label for="editType">ประเภท</label>
-          <select id="editType">
-            <option value="expense">รายจ่าย</option>
-            <option value="income">รายรับ</option>
-            <option value="saving">ออมเงิน</option>
-          </select>
-        </div>
-
-        <div class="col" id="editColCat"><label for="editCat">หมวดหมู่</label><select id="editCat"></select></div>
-
-        <div class="col" id="editColAmount">
-          <label for="editAmount">จำนวนเงิน (บาท)</label>
-          <input id="editAmount" type="number" step="0.01" placeholder="0.00">
-        </div>
-
-        <div class="col hide" id="editColDebtRepayFields" style="flex:1 1 100%">
-          <label>รายละเอียดการจ่ายหนี้</label>
-          <div class="row" style="gap:.5rem; margin:0">
-            <div class="col"><input id="editInt" type="number" step="0.01" placeholder="จ่ายดอก (บาท)"></div>
-            <div class="col"><input id="editPrin" type="number" step="0.01" placeholder="จ่ายต้น (บาท)"></div>
-          </div>
-          <div class="help">* ยอดรวม = จ่ายดอก + จ่ายต้น (อัปเดตรวมให้อัตโนมัติ)</div>
-        </div>
-
-        <div class="col" style="flex:1 1 100%"><label for="editNote">หมายเหตุ</label><input id="editNote" maxlength="500" placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"></div>
-      </div>
-
-      <div class="actions">
-        <button id="btnDelete" class="btn-danger">ลบ</button>
-        <button id="btnCancel" class="btn-ghost">ยกเลิก</button>
-        <button id="btnUpdate" class="btn-warn">บันทึกการแก้ไข</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="editDebtBackdrop" class="modal-backdrop" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editDebtTitle">
-      <div id="editDebtTitle" class="title">แก้ไขเจ้าหนี้</div>
-      <input id="editDebtId" type="hidden">
-      <div class="row">
-        <div class="col"><label for="editDebtName">ชื่อเจ้าหนี้</label><input id="editDebtName" placeholder="เช่น บัตร X / เพื่อน A"></div>
-        <div class="col"><label for="editDebtRate">อัตราดอกต่อปี (%)</label><input id="editDebtRate" type="number" step="0.01"></div>
-      </div>
-      <div class="actions">
-        <button id="btnEditDebtCancel" class="btn-ghost">ยกเลิก</button>
-        <button id="btnEditDebtSave" class="btn-green">บันทึก</button>
-      </div>
     </div>
   </div>
 
@@ -333,7 +237,7 @@ async function api(path, payload={}, useToken=true, overlay=false){
   finally{ if (overlay) showOverlay(false); }
 }
 
-/** ====== LIFF: wait until ready, then init ====== */
+/** ====== LIFF: รอให้พร้อมก่อน ====== */
 function waitForLiffReady(timeoutMs=5000){
   return new Promise(res=>{
     if (window.liff){ return res(true); }
@@ -347,24 +251,14 @@ function waitForLiffReady(timeoutMs=5000){
 async function ensureTokenViaLIFF(){
   const okReady = await waitForLiffReady();
   if (!okReady){ toast('LIFF ยังไม่พร้อม โปรดรีเฟรช', false); log('LIFF not ready'); return false; }
-
-  try{
-    await liff.init({ liffId: LIFF_ID });
-  }catch(e){ toast('เริ่ม LIFF ไม่สำเร็จ', false); log('liff.init error', e); return false; }
-
+  try{ await liff.init({ liffId: LIFF_ID }); }catch(e){ toast('เริ่ม LIFF ไม่สำเร็จ', false); log('liff.init error', e); return false; }
   if (!liff.isLoggedIn()){ liff.login({ redirectUri: location.href }); return false; }
-
-  let prof; try{ prof = await liff.getProfile(); }catch(e){ toast('อ่านโปรไฟล์ LINE ไม่ได้', false); log('getProfile error', e); return false; }
+  let prof; try{ prof = await liff.getProfile(); }catch(e){ toast('อ่านโปรไฟล์ LINE ไม่ได้', false); return false; }
   const r = await api('liff/link_or_login', { line_user_id: prof.userId, display_name: prof.displayName||'' }, false);
-  if (!r.ok){ toast(r.message || 'เกิดข้อผิดพลาด', false); log('link_or_login fail', r); return false; }
-  if (r.need_verification){
-    $('#who').textContent = prof.displayName || '';
-    toast('ยังไม่ผูกบัญชี กรุณาไปผูกก่อน', false);
-    return false;
-  }
+  if (!r.ok){ toast(r.message || 'เกิดข้อผิดพลาด', false); return false; }
+  if (r.need_verification){ $('#who').textContent = prof.displayName || ''; toast('ยังไม่ผูกบัญชี กรุณาไปผูกก่อน', false); return false; }
   token = r.token; displayName = r.display_name || prof.displayName || '';
-  localStorage.setItem('fin_token', token);
-  localStorage.setItem('fin_name', displayName);
+  localStorage.setItem('fin_token', token); localStorage.setItem('fin_name', displayName);
   $('#who').textContent = displayName;
   return true;
 }
@@ -377,10 +271,7 @@ async function loadCategoriesAll(){
 }
 function fillSelect(el, items, getVal, getText){
   const frag = document.createDocumentFragment();
-  for(const it of items){
-    const o=document.createElement('option');
-    o.value=getVal(it); o.textContent=getText(it); frag.appendChild(o);
-  }
+  for(const it of items){ const o=document.createElement('option'); o.value=getVal(it); o.textContent=getText(it); frag.appendChild(o); }
   el.innerHTML=''; el.appendChild(frag);
 }
 function populateCatSelect(){
@@ -388,48 +279,16 @@ function populateCatSelect(){
   fillSelect($('#txCat'), (cats[t]||[]), c=>c.category_id, c=>c.name_th||c.category_id);
 }
 function populateEditCatSelect(){
-  const t = $('#editType').value;
-  fillSelect($('#editCat'), (cats[t]||[]), c=>c.category_id, c=>c.name_th||c.category_id);
+  const t = $('#editType')?.value || 'expense';
+  const el = $('#editCat'); if (!el) return;
+  fillSelect(el, (cats[t]||[]), c=>c.category_id, c=>c.name_th||c.category_id);
 }
 
-/** ====== Debts ====== */
-async function loadDebtsBoth(){
-  const [rList, rSum] = await Promise.all([ api('debts/list', {}, true), api('debts/summary', {}, true) ]);
-  debtsCache = rList.ok ? (rList.items||[]) : [];
-  const mapById = Object.fromEntries((debtsCache||[]).map(d=> [d.debt_id, d]));
-  const rows = (rSum.ok ? (rSum.items||[]) : []).map(x=>{
-    const d = mapById[x.debt_id] || {};
-    const principal = Number(x.principal_current ?? d.principal_current ?? 0);
-    const accrued   = Number(x.accrued_interest  ?? d.accrued_interest  ?? 0);
-    const rate      = Number(x.annual_rate       ?? d.annual_rate       ?? 0);
-    const total_due = (typeof x.total_due === 'number' && Number.isFinite(x.total_due))
-      ? x.total_due
-      : principal + accrued;
-    return { debt_id:x.debt_id, lender_name:x.lender_name||d.lender_name||'', rate, principal, accrued, total:total_due, last_calc_date: d.last_calc_date || x.as_of || '' };
-  });
+/** ====== Debts: ใช้เฉพาะสำหรับตัวเลือกในฟอร์ม ====== */
+async function loadDebtsPicker(){
+  const r = await api('debts/list', {}, true);
+  debtsCache = r.ok ? (r.items||[]) : [];
   fillSelect($('#txDebt'), debtsCache, d=>d.debt_id, d=>d.lender_name||d.debt_id);
-
-  const tb = $('#tblDebts'); tb.innerHTML='';
-  if (!rows.length){ tb.innerHTML = '<tr><td colspan="7" class="muted" style="text-align:center">ยังไม่มีหนี้ที่เปิดอยู่</td></tr>'; return; }
-  const frag = document.createDocumentFragment();
-  for (const r of rows){
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${esc(r.lender_name)}</td>
-      <td class="right">${fmt(r.rate)}</td>
-      <td class="right">${fmt(r.principal)}</td>
-      <td class="right">${fmt(r.accrued)}</td>
-      <td class="right"><b>${fmt(r.total)}</b></td>
-      <td>${esc((r.last_calc_date||'').slice(0,10))}</td>
-      <td>
-        <div class="actions">
-          <button class="btn-ghost" data-dact="edit"  data-id="${esc(r.debt_id)}">แก้ไข</button>
-          <button class="btn-danger" data-dact="close" data-id="${esc(r.debt_id)}">ปิดบัญชี</button>
-        </div>
-      </td>`;
-    frag.appendChild(tr);
-  }
-  tb.appendChild(frag);
 }
 
 /** ====== Type Switch ====== */
@@ -443,6 +302,7 @@ function setType(type){
   $('#colDebt').classList.toggle('hide', !debtMode);
   $('#colDebtRepayFields').classList.toggle('hide', !isRepay);
   if (!debtMode) populateCatSelect();
+  else if (!$('#txDebt').options.length) loadDebtsPicker();
 }
 
 /** ====== Save Tx ====== */
@@ -473,7 +333,7 @@ async function saveTx(){
       if (!(isFinite(amount) && amount>0)){ toast('ใส่ยอดจ่ายดอก/จ่ายต้นให้ถูกต้อง', false); $('#btnSave').disabled=false; return; }
       const r = await api('debts/repay', { debt_id, date, amount, interest_paid:interest, principal_paid:principal, note }, true, true);
       $('#btnSave').disabled = false;
-      if (r.ok){ toast('บันทึกจ่ายหนี้สำเร็จ'); clearForm(); loadDebtsBoth(); refreshList(); $('#txAmount').focus(); }
+      if (r.ok){ toast('บันทึกจ่ายหนี้สำเร็จ'); clearForm(); refreshList(); $('#txAmount').focus(); }
       else toast(r.message||'บันทึกไม่สำเร็จ', false);
       return;
     }else{
@@ -481,7 +341,7 @@ async function saveTx(){
       if (isNaN(amount)){ toast('จำนวนเงินไม่ถูกต้อง', false); $('#btnSave').disabled=false; return; }
       const r = await api('debts/borrow', { debt_id, date, amount, note }, true, true);
       $('#btnSave').disabled = false;
-      if (r.ok){ toast('บันทึกกู้หนี้สำเร็จ'); clearForm(); loadDebtsBoth(); refreshList(); $('#txAmount').focus(); }
+      if (r.ok){ toast('บันทึกกู้หนี้สำเร็จ'); clearForm(); refreshList(); $('#txAmount').focus(); }
       else toast(r.message||'บันทึกไม่สำเร็จ', false);
       return;
     }
@@ -500,7 +360,7 @@ async function saveTx(){
 }
 $('#btnSave').addEventListener('click', saveTx);
 
-/** ====== List + Edit/Delete ====== */
+/** ====== รายการย้อนหลัง ====== */
 function renderTable(items){
   const tb = $('#tblBody'); tb.innerHTML='';
   const sorted = items.slice().sort((a,b)=> safeKey(b).localeCompare(safeKey(a)));
@@ -545,146 +405,31 @@ async function refreshList(){
   lastItems = (r.items||[]).map(x=> ({...x, amount:+x.amount}));
   renderTable(lastItems);
 }
-$('#tblBody').addEventListener('click', (e)=>{
-  const btn = e.target.closest('button[data-act]');
-  if (!btn) return;
-  const id = btn.getAttribute('data-id');
-  const act = btn.getAttribute('data-act');
-  if (act==='edit') openEditById(id);
-  if (act==='del')  confirmDelete(id);
-});
-
-async function openEditById(txId){
-  if (!txId){ toast('ไม่พบรหัสรายการ', false); return; }
-  let it = lastItems.find(x=> String(x.tx_id)===String(txId));
-  if (!it){
-    const r = await api('transactions/list', { from: $('#fFrom').value, to: $('#fTo').value, type:'all' }, true);
-    if (!r.ok){ toast('โหลดรายการไม่สำเร็จ', false); return; }
-    lastItems = (r.items||[]); it = lastItems.find(x=> String(x.tx_id)===String(txId));
-    if (!it){ toast('รายการหายไปแล้ว', false); return; }
-  }
-  const isDebtRepay = !!it.debt_tx_id && (String(it.debt_type||'repay').includes('repay') || (it.category_name||'').includes('จ่ายหนี้'));
-  $('#editTxId').value = it.tx_id;
-  $('#editDate').value = (it.date||'').slice(0,10);
-  $('#editNote').value = it.note||'';
-
-  if (isDebtRepay){
-    $('#editColType').classList.add('hide');
-    $('#editColCat').classList.add('hide');
-    $('#editColAmount').classList.remove('hide');
-    $('#editColDebtRepayFields').classList.remove('hide');
-    $('#editAmount').readOnly = true;
-    $('#editType').disabled = true; $('#editCat').disabled = true;
-
+document.querySelector('#tblBody').addEventListener('click', async (e)=>{
+  const btn = e.target.closest('button[data-act]'); if (!btn) return;
+  const id = btn.getAttribute('data-id'); const act = btn.getAttribute('data-act');
+  if (act==='del'){
+    if (!confirm('ยืนยันการลบรายการนี้?')) return;
     showOverlay(true);
-    const debtDetails = await api('debts/tx/get', { tx_id: it.debt_tx_id }, true);
+    const r = await api('transactions/delete', { tx_id:id }, true);
     showOverlay(false);
-    const prin = debtDetails.ok ? Number(debtDetails.item?.principal_paid||0) : 0;
-    const intr = debtDetails.ok ? Number(debtDetails.item?.interest_paid||0)  : 0;
-    $('#editPrin').value = prin ? prin : '';
-    $('#editInt').value  = intr ? intr : '';
-    $('#editAmount').value = (Math.round((prin+intr)*100)/100).toFixed(2);
-    const updateTotal = ()=>{
-      const p = Number($('#editPrin').value||0);
-      const i = Number($('#editInt').value||0);
-      $('#editAmount').value = (Math.round((p+i)*100)/100).toFixed(2);
-    };
-    $('#editPrin').oninput = updateTotal; $('#editInt').oninput  = updateTotal;
-    $('#editBackdrop').dataset.isDebtRepay = 'true';
-  }else{
-    $('#editColType').classList.remove('hide');
-    $('#editColCat').classList.remove('hide');
-    $('#editColAmount').classList.remove('hide');
-    $('#editColDebtRepayFields').classList.add('hide');
-    $('#editType').disabled = false; $('#editCat').disabled = false;
-    $('#editAmount').readOnly = false;
-    $('#editType').value = it.type;
-    populateEditCatSelect();
-    $('#editCat').value = it.category_id;
-    $('#editAmount').value = String(it.amount||0);
-    $('#editBackdrop').dataset.isDebtRepay = 'false';
+    if (r.ok){ toast('ลบสำเร็จ'); refreshList(); } else toast(r.message||'ลบไม่สำเร็จ', false);
   }
-
-  $('#editBackdrop').classList.add('show');
-  $('#editBackdrop').setAttribute('aria-hidden','false');
-}
-function closeEdit(){ $('#editBackdrop').classList.remove('show'); $('#editBackdrop').setAttribute('aria-hidden','true'); }
-$('#btnCancel').addEventListener('click', closeEdit);
-$('#editType').addEventListener('change', populateEditCatSelect);
-
-$('#btnUpdate').addEventListener('click', async ()=>{
-  const tx_id = $('#editTxId').value;
-  const isDebtRepay = $('#editBackdrop').dataset.isDebtRepay === 'true';
-  $('#btnUpdate').disabled = true;
-
-  let r;
-  if (isDebtRepay){
-    const it = lastItems.find(x=> String(x.tx_id)===String(tx_id));
-    const debt_tx_id = it ? it.debt_tx_id : '';
-    if (!debt_tx_id){ toast('ไม่พบรหัสธุรกรรมหนี้', false); $('#btnUpdate').disabled=false; return; }
-    const principal_paid = Number($('#editPrin').value||0);
-    const interest_paid  = Number($('#editInt').value||0);
-    const payload = {
-      debt_tx_id,
-      date: $('#editDate').value,
-      note: $('#editNote').value.trim(),
-      principal_paid: Math.round(principal_paid*100)/100,
-      interest_paid:  Math.round(interest_paid*100)/100
-    };
-    r = await api('debts/tx/update', payload, true, true);
-  }else{
-    const amount = Number($('#editAmount').value);
-    const payload = {
-      tx_id,
-      date: $('#editDate').value,
-      type: $('#editType').value,
-      category_id: $('#editCat').value,
-      amount: Math.round(amount*100)/100,
-      note: $('#editNote').value.trim()
-    };
-    if (!(payload.date && payload.category_id && isFinite(payload.amount) && payload.amount>0)){
-      toast('ข้อมูลไม่ครบหรือจำนวนเงินไม่ถูกต้อง', false); $('#btnUpdate').disabled=false; return;
-    }
-    r = await api('transactions/update', payload, true, true);
+  if (act==='edit'){
+    // เปิดแก้แบบเร็วผ่าน prompt (ตัด modal ออกเพื่อความเบา)
+    const it = lastItems.find(x=> String(x.tx_id)===String(id)); if (!it) return;
+    const v = prompt('แก้ไขจำนวนเงิน (บาท):', it.amount);
+    if (v===null) return;
+    const amount = Number(v);
+    if (!isFinite(amount) || amount<=0){ toast('จำนวนเงินไม่ถูกต้อง', false); return; }
+    showOverlay(true);
+    const r = await api('transactions/update', {
+      tx_id:id, date:(it.date||'').slice(0,10), type:it.type, category_id:it.category_id, amount:Math.round(amount*100)/100, note:it.note||''
+    }, true);
+    showOverlay(false);
+    if (r.ok){ toast('บันทึกแก้ไขสำเร็จ'); refreshList(); } else toast(r.message||'อัปเดตไม่สำเร็จ', false);
   }
-
-  $('#btnUpdate').disabled = false;
-  if (r.ok){ toast('บันทึกแก้ไขสำเร็จ'); closeEdit(); loadDebtsBoth(); refreshList(); }
-  else toast(r.message||'อัปเดตไม่สำเร็จ', false);
 });
-
-async function confirmDelete(tx_id){
-  if (!tx_id) return;
-  if (!confirm('ยืนยันการลบรายการนี้?')) return;
-  showOverlay(true);
-  const r = await api('transactions/delete', { tx_id }, true);
-  showOverlay(false);
-  if (r.ok){ toast('ลบสำเร็จ'); loadDebtsBoth(); refreshList(); }
-  else toast(r.message||'ลบไม่สำเร็จ', false);
-}
-
-/** ====== Debt edit modal ====== */
-$('#btnEditDebtCancel').addEventListener('click', ()=>{ $('#editDebtBackdrop').classList.remove('show'); $('#editDebtBackdrop').setAttribute('aria-hidden','true'); });
-$('#btnEditDebtSave').addEventListener('click', async ()=>{
-  const id = $('#editDebtId').value;
-  const name = $('#editDebtName').value.trim();
-  const rate = Number($('#editDebtRate').value);
-  if (!id){ toast('ไม่พบรหัสเจ้าหนี้', false); return; }
-  if (!name){ toast('กรุณากรอกชื่อเจ้าหนี้', false); return; }
-  if (!isFinite(rate) || rate<0){ toast('อัตราดอกไม่ถูกต้อง', false); return; }
-  const r = await api('debts/update', { debt_id:id, lender_name:name, annual_rate:Math.round(rate*100)/100 }, true, true);
-  if (r.ok){ toast('บันทึกแก้ไขสำเร็จ'); $('#editDebtBackdrop').classList.remove('show'); $('#editDebtBackdrop').setAttribute('aria-hidden','true'); loadDebtsBoth(); }
-  else toast(r.message||'อัปเดตไม่สำเร็จ', false);
-});
-function openDebtEdit(id){
-  const d = debtsCache.find(x=> String(x.debt_id)===String(id));
-  if (!d){ toast('ไม่พบเจ้าหนี้', false); return; }
-  $('#editDebtId').value = d.debt_id;
-  $('#editDebtName').value = d.lender_name || '';
-  $('#editDebtRate').value = (d.annual_rate ?? 0);
-  $('#editDebtBackdrop').classList.add('show');
-  $('#editDebtBackdrop').setAttribute('aria-hidden','false');
-}
 
 /** ====== Range shortcuts ====== */
 const debouncedRefresh = debounce(()=> refreshList(), 350);
@@ -729,23 +474,21 @@ $('#fTo').addEventListener('change',   ()=>{ updateRangeUI(); debouncedRefresh()
   $('#txDate').value = todayISO();
   setType('expense');
   const mb = monthBounds(new Date()); $('#fFrom').value = mb.start; $('#fTo').value = mb.end; updateRangeUI();
-
   if (displayName) $('#who').textContent = displayName;
 
   showOverlay(true);
   let ok=false;
-  try{ ok = await ensureTokenViaLIFF(); }catch(e){ log('ensureTokenViaLIFF exception', e); toast('เริ่มต้นผ่าน LIFF ไม่สำเร็จ', false); }
+  try{ ok = await ensureTokenViaLIFF(); }catch(e){ toast('เริ่มต้นผ่าน LIFF ไม่สำเร็จ', false); }
   if (ok){
     const from = $('#fFrom').value, to = $('#fTo').value;
     const [_, __, rTx] = await Promise.all([
       loadCategoriesAll(),
-      loadDebtsBoth(),
+      loadDebtsPicker(),               // เบาขึ้น: โหลดเฉพาะสำหรับ dropdown
       api('transactions/list', { from, to, type:'all' }, true),
     ]);
     if (rTx.ok){ lastItems = (rTx.items||[]).map(x=> ({...x, amount:+x.amount})); renderTable(lastItems); }
     populateCatSelect();
   }else{
-    // แสดงสเตตัสเพื่อให้รู้ว่าไม่ได้โหลดข้อมูลเพราะยังไม่ได้สิทธิ์
     $('#emptyList').style.display = 'block';
     $('#emptyList').textContent = 'ยังไม่ได้เข้าสู่ระบบผ่าน LINE (LIFF)';
   }
@@ -754,7 +497,6 @@ $('#fTo').addEventListener('change',   ()=>{ updateRangeUI(); debouncedRefresh()
 
 /** ====== UI listeners ====== */
 $$('.segbtn').forEach(b=> b.addEventListener('click', ()=> setType(b.dataset.type)));
-$('#btnCancel').addEventListener('click', ()=>{ $('#editBackdrop').classList.remove('show'); $('#editBackdrop').setAttribute('aria-hidden','true'); });
   </script>
 </body>
 </html>
