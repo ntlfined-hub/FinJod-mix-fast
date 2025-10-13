@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>FIN-JOD · บันทึกรายการ</title>
+  <title>FIN-JOD · Hybrid Tabs (บันทึก/รายการ)</title>
 
-  <!-- Fonts (ไม่บล็อกการวาด) -->
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
@@ -33,6 +33,13 @@
     h1{ margin:.25rem 0 1rem; font-size:clamp(1.25rem,4.5vw,1.8rem); color:var(--primary); text-align:center }
     .head{ display:flex; align-items:center; gap:.75rem; margin-bottom:.75rem }
     .head .you{ margin-left:auto; color:#9fe9d4; font-weight:600 }
+
+    .tabs{ display:flex; gap:.5rem; background:#1b1b1b; border:1px solid var(--line); border-radius:12px; padding:.25rem; margin-bottom:1rem }
+    .tab-btn{ flex:1; padding:.7rem 1rem; border-radius:10px; border:1px solid transparent; background:transparent; color:#ddd; font-weight:700; cursor:pointer }
+    .tab-btn.active{ background:#2a2a2a; border-color:#3a3a3a; color:#fff }
+    .tab-pane{ display:none }
+    .tab-pane.active{ display:block }
+
     .card{ background:#1f1f1f; border:1px solid var(--line); border-radius:16px; padding:1rem; margin-bottom:1rem }
     .row{ display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1rem }
     .col{ flex:1 1 46%; min-width:230px; display:flex; flex-direction:column; gap:.35rem }
@@ -86,17 +93,17 @@
     .hide{ display:none }
   </style>
 
-  <!-- LIFF SDK (defer) -->
+  <!-- LIFF SDK -->
   <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
   <div class="wrap">
     <div class="head">
-      <h1 style="margin:0">FIN-JOD · บันทึกรายการ</h1>
+      <h1 style="margin:0">FIN-JOD · Hybrid Tabs</h1>
       <div class="you" id="who"></div>
     </div>
 
-    <!-- ===== ฟอร์มผูกบัญชี (ใหม่) ===== -->
+    <!-- ===== ฟอร์มผูกบัญชี (แสดงเฉพาะยังไม่เคยผูก) ===== -->
     <div id="linkBox" class="card hide" role="region" aria-label="ผูกบัญชี">
       <div class="muted" style="margin-bottom:.5rem">ผูกบัญชีครั้งเดียวเพื่อใช้งานผ่าน LINE ได้อัตโนมัติ</div>
       <div class="row">
@@ -108,113 +115,122 @@
       </div>
     </div>
 
-    <!-- ===== ทั้งแอป (เดิม) ห่อด้วย #app เพื่อสลับโชว์/ซ่อน ===== -->
-    <div id="app" class="">
-      <!-- ===== ฟอร์มบันทึก + หนี้ (คงไว้) ===== -->
-      <div class="card" role="region" aria-label="บันทึกธุรกรรม">
-        <div class="row">
-          <div class="col">
-            <label for="txDate">วันที่</label>
-            <input id="txDate" type="date" />
-          </div>
-          <div class="col">
-            <label>ประเภท</label>
-            <div class="seg">
-              <button class="segbtn" data-type="expense">รายจ่าย</button>
-              <button class="segbtn" data-type="income">รายรับ</button>
-              <button class="segbtn" data-type="saving">ออมเงิน</button>
-              <span class="muted" style="align-self:center">|</span>
-              <button class="segbtn" data-type="debt_repay" title="จ่ายหนี้">จ่ายหนี้</button>
-              <button class="segbtn" data-type="debt_borrow" title="กู้หนี้">กู้หนี้</button>
-            </div>
-            <select id="txType" class="hide" aria-hidden="true">
-              <option value="expense" selected>รายจ่าย</option>
-              <option value="income">รายรับ</option>
-              <option value="saving">ออมเงิน</option>
-              <option value="debt_repay">จ่ายหนี้</option>
-              <option value="debt_borrow">กู้หนี้</option>
-            </select>
-          </div>
-
-          <div class="col" id="colCat">
-            <label for="txCat">หมวดหมู่</label>
-            <select id="txCat"></select>
-            <div class="help">* เพิ่มหมวดในหน้าหลักของคุณได้ตามเดิม</div>
-          </div>
-          <div class="col" id="colAmount">
-            <label for="txAmount">จำนวนเงิน (บาท)</label>
-            <input id="txAmount" type="number" step="0.01" inputmode="decimal" placeholder="0.00" />
-          </div>
-
-          <!-- เลือกเจ้าหนี้ (คงไว้) -->
-          <div class="col hide" id="colDebt">
-            <label for="txDebt">เลือกเจ้าหนี้</label>
-            <div class="row" style="margin:0; gap:.5rem">
-              <div class="col" style="min-width:200px"><select id="txDebt"></select></div>
-            </div>
-            <div class="help">* รายการนี้ดึงจากรายชื่อเจ้าหนี้ที่มีอยู่</div>
-          </div>
-          <div class="col hide" id="colDebtRepayFields" style="flex:1 1 100%">
-            <label>รายละเอียดการจ่ายหนี้</label>
-            <div class="row" style="gap:.5rem; margin:0">
-              <div class="col"><input id="txInt" type="number" step="0.01" placeholder="จ่ายดอก (บาท)" /></div>
-              <div class="col"><input id="txPrin" type="number" step="0.01" placeholder="จ่ายต้น (บาท)" /></div>
-            </div>
-            <div class="help">* ระบบจะบันทึกยอดรวม = จ่ายดอก + จ่ายต้น</div>
-          </div>
-        </div>
-
-        <div class="row" style="align-items:flex-end; gap:1rem">
-          <div class="col" style="flex:1 1 0">
-            <label for="txNote">หมายเหตุ</label>
-            <input id="txNote" placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)" maxlength="500" />
-          </div>
-          <div class="col" style="flex:0 0 auto">
-            <button id="btnSave" class="btn-green" style="min-width:180px">บันทึกรายการ</button>
-          </div>
-        </div>
+    <!-- ===== เนื้อหาแอป พร้อมแท็บ ===== -->
+    <div id="app" class="hide">
+      <div class="tabs" role="tablist" aria-label="เมนูหลัก">
+        <button id="tab-create" class="tab-btn active" role="tab" aria-selected="true" aria-controls="pane-create">บันทึก</button>
+        <button id="tab-list"   class="tab-btn"        role="tab" aria-selected="false" aria-controls="pane-list">รายการ</button>
       </div>
 
-      <!-- ===== รายการย้อนหลัง (คงไว้) ===== -->
-      <div class="card" role="region" aria-label="รายการย้อนหลัง">
-        <div class="row">
-          <div class="col"><label for="fFrom">จาก</label><input id="fFrom" type="date" /></div>
-          <div class="col"><label for="fTo">ถึง</label><input id="fTo" type="date" /></div>
-          <div class="col">
-            <label>&nbsp;</label>
-            <div class="chips">
-              <div class="chip" data-range="today">วันนี้</div>
-              <div class="chip" data-range="7">7 วัน</div>
-              <div class="chip" data-range="30">30 วัน</div>
-              <div class="chip" data-range="month">เดือนนี้</div>
-              <div class="chip" data-range="year">ปีนี้</div>
-              <button id="btnRefresh" class="btn-blue" style="margin-left:auto">รีเฟรช</button>
+      <!-- ===== แท็บ 1: บันทึก (Lazy load: categories/debts ตอนเข้าแท็บครั้งแรก) ===== -->
+      <section id="pane-create" class="tab-pane active" role="tabpanel" aria-labelledby="tab-create">
+        <div class="card" role="region" aria-label="บันทึกธุรกรรม">
+          <div class="row">
+            <div class="col">
+              <label for="txDate">วันที่</label>
+              <input id="txDate" type="date" />
             </div>
-            <div class="muted" style="margin-top:.4rem">กำลังดู: <b id="rangeBadge">กำหนดเอง</b></div>
+            <div class="col">
+              <label>ประเภท</label>
+              <div class="seg">
+                <button class="segbtn" data-type="expense">รายจ่าย</button>
+                <button class="segbtn" data-type="income">รายรับ</button>
+                <button class="segbtn" data-type="saving">ออมเงิน</button>
+                <span class="muted" style="align-self:center">|</span>
+                <button class="segbtn" data-type="debt_repay" title="จ่ายหนี้">จ่ายหนี้</button>
+                <button class="segbtn" data-type="debt_borrow" title="กู้หนี้">กู้หนี้</button>
+              </div>
+              <select id="txType" class="hide" aria-hidden="true">
+                <option value="expense" selected>รายจ่าย</option>
+                <option value="income">รายรับ</option>
+                <option value="saving">ออมเงิน</option>
+                <option value="debt_repay">จ่ายหนี้</option>
+                <option value="debt_borrow">กู้หนี้</option>
+              </select>
+            </div>
+
+            <div class="col" id="colCat">
+              <label for="txCat">หมวดหมู่</label>
+              <select id="txCat"></select>
+              <div class="help">* เพิ่มหมวดในหน้าหลักของคุณได้ตามเดิม</div>
+            </div>
+            <div class="col" id="colAmount">
+              <label for="txAmount">จำนวนเงิน (บาท)</label>
+              <input id="txAmount" type="number" step="0.01" inputmode="decimal" placeholder="0.00" />
+            </div>
+
+            <div class="col hide" id="colDebt">
+              <label for="txDebt">เลือกเจ้าหนี้</label>
+              <div class="row" style="margin:0; gap:.5rem">
+                <div class="col" style="min-width:200px"><select id="txDebt"></select></div>
+              </div>
+              <div class="help">* รายการนี้ดึงจากรายชื่อเจ้าหนี้ที่มีอยู่</div>
+            </div>
+            <div class="col hide" id="colDebtRepayFields" style="flex:1 1 100%">
+              <label>รายละเอียดการจ่ายหนี้</label>
+              <div class="row" style="gap:.5rem; margin:0">
+                <div class="col"><input id="txInt" type="number" step="0.01" placeholder="จ่ายดอก (บาท)" /></div>
+                <div class="col"><input id="txPrin" type="number" step="0.01" placeholder="จ่ายต้น (บาท)" /></div>
+              </div>
+              <div class="help">* ระบบจะบันทึกยอดรวม = จ่ายดอก + จ่ายต้น</div>
+            </div>
+          </div>
+
+          <div class="row" style="align-items:flex-end; gap:1rem">
+            <div class="col" style="flex:1 1 0">
+              <label for="txNote">หมายเหตุ</label>
+              <input id="txNote" placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)" maxlength="500" />
+            </div>
+            <div class="col" style="flex:0 0 auto; display:flex; gap:.5rem">
+              <button id="btnPrefetchCreate" class="btn-cyan" title="รีเฟรชหมวด/เจ้าหนี้">รีเฟรชข้อมูลฟอร์ม</button>
+              <button id="btnSave" class="btn-green" style="min-width:180px">บันทึกรายการ</button>
+            </div>
           </div>
         </div>
+      </section>
 
-        <div class="table-viewport">
-          <table>
-            <thead>
-              <tr>
-                <th style="width:110px">วันที่</th>
-                <th style="width:140px">ประเภท</th>
-                <th>หมวด/เจ้าหนี้</th>
-                <th class="right" style="width:130px">จำนวน</th>
-                <th>หมายเหตุ</th>
-                <th style="width:160px">จัดการ</th>
-              </tr>
-            </thead>
-            <tbody id="tblBody"></tbody>
-          </table>
+      <!-- ===== แท็บ 2: รายการ (Lazy load: list ตอนเข้าแท็บครั้งแรก) ===== -->
+      <section id="pane-list" class="tab-pane" role="tabpanel" aria-labelledby="tab-list">
+        <div class="card" role="region" aria-label="รายการย้อนหลัง">
+          <div class="row">
+            <div class="col"><label for="fFrom">จาก</label><input id="fFrom" type="date" /></div>
+            <div class="col"><label for="fTo">ถึง</label><input id="fTo" type="date" /></div>
+            <div class="col">
+              <label>&nbsp;</label>
+              <div class="chips">
+                <div class="chip" data-range="today">วันนี้</div>
+                <div class="chip" data-range="7">7 วัน</div>
+                <div class="chip" data-range="30">30 วัน</div>
+                <div class="chip" data-range="month">เดือนนี้</div>
+                <div class="chip" data-range="year">ปีนี้</div>
+                <button id="btnRefresh" class="btn-blue" style="margin-left:auto">รีเฟรช</button>
+              </div>
+              <div class="muted" style="margin-top:.4rem">กำลังดู: <b id="rangeBadge">กำหนดเอง</b></div>
+            </div>
+          </div>
+
+          <div class="table-viewport">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:110px">วันที่</th>
+                  <th style="width:140px">ประเภท</th>
+                  <th>หมวด/เจ้าหนี้</th>
+                  <th class="right" style="width:130px">จำนวน</th>
+                  <th>หมายเหตุ</th>
+                  <th style="width:160px">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="tblBody"></tbody>
+            </table>
+          </div>
+          <div id="emptyList" class="muted" style="margin-top:.5rem; display:none">ยังไม่มีรายการ</div>
         </div>
-        <div id="emptyList" class="muted" style="margin-top:.5rem; display:none">ยังไม่มีรายการ</div>
-      </div>
+      </section>
     </div>
   </div>
 
-  <!-- ===== โมดัลแก้ไข "รายการ" (คงไว้) ===== -->
+  <!-- ===== โมดัลแก้ไขรายการ ===== -->
   <div id="editBackdrop" class="modal-backdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
       <div id="editTitle" class="title">แก้ไขรายการ</div>
@@ -239,7 +255,6 @@
           <input id="editAmount" type="number" step="0.01" placeholder="0.00">
         </div>
 
-        <!-- โหมดจ่ายหนี้ (คงไว้) -->
         <div class="col hide" id="editColDebtRepayFields" style="flex:1 1 100%">
           <label>รายละเอียดการจ่ายหนี้</label>
           <div class="row" style="gap:.5rem; margin:0">
@@ -263,7 +278,7 @@
   <div id="toast">แจ้งเตือน</div>
   <div id="overlay" class="hide" aria-live="polite" aria-busy="true"><div class="spinner"></div></div>
 
-  <script>
+<script>
 /** ====== CONFIG ====== */
 const LIFF_ID = '2008276151-610PgRqg';
 const API_URL = 'https://script.google.com/macros/s/AKfycbxV3xOU1kQM86jUJtfer8hW_HgYkcLfpH942saPVbCZ1RDmN_4LYjpk72OxdKKLQAFt/exec';
@@ -274,6 +289,7 @@ let displayName = localStorage.getItem('fin_name') || '';
 let lastItems = [];
 let cats = { income:[], expense:[], saving:[] };
 let debtsCache = [];
+const loaded = { create:false, list:false }; // lazy flags
 const THB = new Intl.NumberFormat('th-TH',{minimumFractionDigits:2, maximumFractionDigits:2});
 
 /** ====== HELPERS ====== */
@@ -305,7 +321,7 @@ async function api(path, payload={}, useToken=true, overlay=false){
   finally{ if (overlay) showOverlay(false); }
 }
 
-/** ====== LIFF (พร้อม “ผูกบัญชีครั้งแรก”) ====== */
+/** ====== LIFF + ผูกครั้งแรก ====== */
 function waitForLiffReady(timeoutMs=5000){
   return new Promise(res=>{
     if (window.liff){ return res(true); }
@@ -316,7 +332,6 @@ function waitForLiffReady(timeoutMs=5000){
     }, 30);
   });
 }
-
 async function ensureTokenViaLIFF(){
   const okReady = await waitForLiffReady();
   if (!okReady){ toast('LIFF ยังไม่พร้อม โปรดรีเฟรช', false); log('LIFF not ready'); return false; }
@@ -333,14 +348,12 @@ async function ensureTokenViaLIFF(){
   if (!r.ok){ toast(r.message || 'เกิดข้อผิดพลาด', false); log('link_or_login fail', r); return false; }
 
   if (r.need_verification){
-    // ยังไม่เคยผูก → โชว์ฟอร์มผูก และซ่อนแอป
     $('#who').textContent = prof.displayName || '';
     $('#linkBox').classList.remove('hide');
     $('#app').classList.add('hide');
     return false;
   }
 
-  // เคยผูกแล้ว → รับ token และเข้าแอปได้เลย
   token = r.token; displayName = r.display_name || prof.displayName || '';
   localStorage.setItem('fin_token', token);
   localStorage.setItem('fin_name', displayName);
@@ -350,7 +363,7 @@ async function ensureTokenViaLIFF(){
   return true;
 }
 
-// กด “ผูกบัญชี” ด้วย User+PIN
+// กด “ผูกบัญชี”
 $('#btnLink')?.addEventListener('click', async ()=>{
   const user_id = $('#inpUser').value.trim();
   const pin     = $('#inpPin').value.trim();
@@ -375,13 +388,10 @@ $('#btnLink')?.addEventListener('click', async ()=>{
   $('#linkBox').classList.add('hide');
   $('#app').classList.remove('hide');
 
-  // โหลดข้อมูลที่จำเป็นหลังผูกสำเร็จ
-  await Promise.all([loadCategoriesAll(), loadDebtsList()]);
-  populateCatSelect();
-  refreshList();
+  // ยังไม่โหลดอะไร — รอเข้าแท็บก่อน (lazy)
 });
 
-/** ====== Categories ====== */
+/** ====== Categories / Debts (สำหรับแท็บ "บันทึก") ====== */
 async function loadCategoriesAll(){
   const types = ['income','expense','saving'];
   const results = await Promise.all(types.map(t=> api('categories/list', { type:t }, true)));
@@ -399,12 +409,6 @@ function populateCatSelect(){
   const t = $('#txType').value;
   fillSelect($('#txCat'), (cats[t]||[]), c=>c.category_id, c=>c.name_th||c.category_id);
 }
-function populateEditCatSelect(){
-  const t = $('#editType').value;
-  fillSelect($('#editCat'), (cats[t]||[]), c=>c.category_id, c=>c.name_th||c.category_id);
-}
-
-/** ====== Debts (รายชื่อ) ====== */
 async function loadDebtsList(){
   const r = await api('debts/list', {}, true);
   debtsCache = r.ok ? (r.items||[]) : [];
@@ -413,7 +417,7 @@ async function loadDebtsList(){
   }
 }
 
-/** ====== Type Switch ====== */
+/** ====== Type Switch (บันทึก) ====== */
 function setType(type){
   $('#txType').value = type;
   $$('.segbtn').forEach(b=> b.classList.toggle('active', b.dataset.type===type));
@@ -454,7 +458,7 @@ async function saveTx(){
       if (!(isFinite(amount) && amount>0)){ toast('ใส่ยอดจ่ายดอก/จ่ายต้นให้ถูกต้อง', false); $('#btnSave').disabled=false; return; }
       const r = await api('debts/repay', { debt_id, date, amount, interest_paid:interest, principal_paid:principal, note }, true, true);
       $('#btnSave').disabled = false;
-      if (r.ok){ toast('บันทึกจ่ายหนี้สำเร็จ'); clearForm(); loadDebtsList(); refreshList(); $('#txAmount').focus(); }
+      if (r.ok){ toast('บันทึกจ่ายหนี้สำเร็จ'); clearForm(); loadDebtsList(); $('#txAmount').focus(); }
       else toast(r.message||'บันทึกไม่สำเร็จ', false);
       return;
     }else{
@@ -462,7 +466,7 @@ async function saveTx(){
       if (isNaN(amount)){ toast('จำนวนเงินไม่ถูกต้อง', false); $('#btnSave').disabled=false; return; }
       const r = await api('debts/borrow', { debt_id, date, amount, note }, true, true);
       $('#btnSave').disabled = false;
-      if (r.ok){ toast('บันทึกกู้หนี้สำเร็จ'); clearForm(); loadDebtsList(); refreshList(); $('#txAmount').focus(); }
+      if (r.ok){ toast('บันทึกกู้หนี้สำเร็จ'); clearForm(); loadDebtsList(); $('#txAmount').focus(); }
       else toast(r.message||'บันทึกไม่สำเร็จ', false);
       return;
     }
@@ -476,12 +480,11 @@ async function saveTx(){
   const payload = { date, type, category_id, amount, note };
   const r = await api('transactions/create', payload, true, true);
   $('#btnSave').disabled = false;
-  if (r.ok){ toast('บันทึกสำเร็จ'); clearForm(); refreshList(); $('#txAmount').focus(); }
+  if (r.ok){ toast('บันทึกสำเร็จ'); clearForm(); $('#txAmount').focus(); }
   else toast('บันทึกไม่สำเร็จ', false);
 }
-$('#btnSave').addEventListener('click', saveTx);
 
-/** ====== List + Edit/Delete ====== */
+/** ====== รายการย้อนหลัง (แท็บ "รายการ") ====== */
 function renderTable(items){
   const tb = $('#tblBody'); tb.innerHTML='';
   const sorted = items.slice().sort((a,b)=> safeKey(b).localeCompare(safeKey(a)));
@@ -526,8 +529,8 @@ async function refreshList(){
   lastItems = (r.items||[]).map(x=> ({...x, amount:+x.amount}));
   renderTable(lastItems);
 }
-$('#tblBody').addEventListener('click', (e)=>{
-  const btn = e.target.closest('button[data-act]');
+document.addEventListener('click', (e)=>{
+  const btn = e.target.closest('#tblBody button[data-act]');
   if (!btn) return;
   const id = btn.getAttribute('data-id');
   const act = btn.getAttribute('data-act');
@@ -580,7 +583,13 @@ async function openEditById(txId){
     $('#editType').disabled = false; $('#editCat').disabled = false;
     $('#editAmount').readOnly = false;
     $('#editType').value = it.type;
-    populateEditCatSelect();
+
+    // เผื่อยังไม่ได้โหลด cats (กรณีเปิดแท็บรายการก่อน)
+    if (!(cats.expense.length || cats.income.length || cats.saving.length)){
+      await loadCategoriesAll();
+    }
+    fillSelect($('#editCat'), (cats[$('#editType').value]||[]), c=>c.category_id, c=>c.name_th||c.category_id);
+
     $('#editCat').value = it.category_id;
     $('#editAmount').value = String(it.amount||0);
     $('#editBackdrop').dataset.isDebtRepay = 'false';
@@ -591,7 +600,9 @@ async function openEditById(txId){
 }
 function closeEdit(){ $('#editBackdrop').classList.remove('show'); $('#editBackdrop').setAttribute('aria-hidden','true'); }
 $('#btnCancel').addEventListener('click', closeEdit);
-$('#editType').addEventListener('change', populateEditCatSelect);
+$('#editType').addEventListener('change', ()=>{
+  fillSelect($('#editCat'), (cats[$('#editType').value]||[]), c=>c.category_id, c=>c.name_th||c.category_id);
+});
 
 $('#btnUpdate').addEventListener('click', async ()=>{
   const tx_id = $('#editTxId').value;
@@ -630,7 +641,7 @@ $('#btnUpdate').addEventListener('click', async ()=>{
   }
 
   $('#btnUpdate').disabled = false;
-  if (r.ok){ toast('บันทึกแก้ไขสำเร็จ'); closeEdit(); loadDebtsList(); refreshList(); }
+  if (r.ok){ toast('บันทึกแก้ไขสำเร็จ'); closeEdit(); refreshList(); }
   else toast(r.message||'อัปเดตไม่สำเร็จ', false);
 });
 
@@ -640,11 +651,11 @@ async function confirmDelete(tx_id){
   showOverlay(true);
   const r = await api('transactions/delete', { tx_id }, true);
   showOverlay(false);
-  if (r.ok){ toast('ลบสำเร็จ'); loadDebtsList(); refreshList(); }
+  if (r.ok){ toast('ลบสำเร็จ'); refreshList(); }
   else toast(r.message||'ลบไม่สำเร็จ', false);
 }
 
-/** ====== Range shortcuts ====== */
+/** ====== Range shortcuts (แท็บรายการ) ====== */
 const debouncedRefresh = debounce(()=> refreshList(), 350);
 function setRange(from, to){ $('#fFrom').value = from; $('#fTo').value = to; updateRangeUI(); debouncedRefresh(); }
 function setRangeDaysBack(days){
@@ -682,39 +693,68 @@ document.querySelectorAll('.chip[data-range]').forEach(ch=>{
 $('#fFrom').addEventListener('change', ()=>{ updateRangeUI(); debouncedRefresh(); });
 $('#fTo').addEventListener('change',   ()=>{ updateRangeUI(); debouncedRefresh(); });
 
-/** ====== INIT ====== */
-(async function init(){
-  $('#txDate').value = todayISO();
-  setType('expense');
-  const mb = monthBounds(new Date()); $('#fFrom').value = mb.start; $('#fTo').value = mb.end; updateRangeUI();
+/** ====== Tabs: Lazy Load Controller ====== */
+function activateTab(tab){
+  const isCreate = (tab==='create');
+  $('#tab-create').classList.toggle('active', isCreate);
+  $('#tab-list').classList.toggle('active', !isCreate);
+  $('#tab-create').setAttribute('aria-selected', String(isCreate));
+  $('#tab-list').setAttribute('aria-selected', String(!isCreate));
+  $('#pane-create').classList.toggle('active', isCreate);
+  $('#pane-list').classList.toggle('active', !isCreate);
 
+  if (isCreate && !loaded.create){
+    // โหลดเฉพาะที่จำเป็นสำหรับฟอร์ม
+    $('#txDate').value = todayISO();
+    setType('expense');
+    showOverlay(true);
+    Promise.all([loadCategoriesAll(), loadDebtsList()]).then(()=>{
+      populateCatSelect();
+      loaded.create = true;
+    }).finally(()=> showOverlay(false));
+  }
+  if (!isCreate && !loaded.list){
+    // ตั้งช่วงวันที่ + โหลดรายการครั้งแรก
+    const mb = monthBounds(new Date());
+    $('#fFrom').value = mb.start; $('#fTo').value = mb.end; updateRangeUI();
+    showOverlay(true);
+    refreshList().then(()=> loaded.list = true).finally(()=> showOverlay(false));
+  }
+}
+$('#tab-create').addEventListener('click', ()=> activateTab('create'));
+$('#tab-list').addEventListener('click',   ()=> activateTab('list'));
+$('#btnPrefetchCreate').addEventListener('click', async ()=>{
+  showOverlay(true);
+  await Promise.all([loadCategoriesAll(), loadDebtsList()]);
+  populateCatSelect();
+  showOverlay(false);
+  toast('รีเฟรชข้อมูลฟอร์มแล้ว');
+});
+$('#btnRefresh').addEventListener('click', ()=> refreshList());
+
+/** ====== INIT (เบามาก: แค่เช็ค LIFF + โชว์ UI) ====== */
+(async function init(){
   if (displayName) $('#who').textContent = displayName;
 
   showOverlay(true);
   let ok=false;
   try{ ok = await ensureTokenViaLIFF(); }catch(e){ log('ensureTokenViaLIFF exception', e); toast('เริ่มต้นผ่าน LIFF ไม่สำเร็จ', false); }
-  if (ok){
-    const from = $('#fFrom').value, to = $('#fTo').value;
-    const [_, __, rTx] = await Promise.all([
-      loadCategoriesAll(),
-      loadDebtsList(),
-      api('transactions/list', { from, to, type:'all' }, true),
-    ]);
-    if (rTx.ok){ lastItems = (rTx.items||[]).map(x=> ({...x, amount:+x.amount})); renderTable(lastItems); }
-    populateCatSelect();
-  }else{
-    // ถ้ายังไม่ได้ผูก: แสดงฟอร์มผูก, ซ่อนแอป
-    $('#linkBox').classList.remove('hide');
-    $('#app').classList.add('hide');
-    $('#emptyList').style.display = 'block';
-    $('#emptyList').textContent = 'ยังไม่ได้เข้าสู่ระบบ/ผูกบัญชีผ่าน LINE';
-  }
   showOverlay(false);
+
+  if (ok){
+    // โชว์แอป และปล่อยให้ผู้ใช้เริ่มที่แท็บ "บันทึก"
+    $('#app').classList.remove('hide');
+    activateTab('create'); // จะโหลดเฉพาะของฟอร์ม
+  }else{
+    // ยังไม่ได้ผูก → เห็นเฉพาะฟอร์มผูกบัญชี
+    $('#linkBox').classList.remove('hide');
+  }
 })();
 
-/** ====== UI listeners ====== */
+/** ====== UI listeners (ฟอร์มบันทึก) ====== */
 $$('.segbtn').forEach(b=> b.addEventListener('click', ()=> setType(b.dataset.type)));
+$('#btnSave').addEventListener('click', saveTx);
 $('#btnCancel').addEventListener('click', ()=>{ $('#editBackdrop').classList.remove('show'); $('#editBackdrop').setAttribute('aria-hidden','true'); });
-  </script>
+</script>
 </body>
 </html>
