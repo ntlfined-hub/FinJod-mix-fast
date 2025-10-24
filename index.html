@@ -79,8 +79,12 @@
     table{ width:100%; border-collapse:collapse; table-layout:fixed; font-size:.98rem }
     th,td{ border-bottom:1px solid var(--line); padding:.8rem .5rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle }
     th{ color:var(--muted); font-weight:600; text-align:left; position:sticky; top:0; background:#1f1f1f; z-index:1 }
-    .table-viewport{ max-height:72vh; overflow:auto; border-radius:12px; border:1px solid var(--line) }
+    /* ===== [เพิ่ม] ป้องกัน h-scroll ค้าง + กันคอลัมน์หมวดถูกบีบ ===== */
+    .table-viewport{ max-height:72vh; overflow-x:auto; overflow-y:auto; border-radius:12px; border:1px solid var(--line) }
     .table-viewport tbody tr:hover{ background:#2a2a2a }
+    th:nth-child(3), td:nth-child(3){ min-width:180px; } /* หมวด/เจ้าหนี้ ต้องมีพื้นที่ขั้นต่ำ */
+    /* ============================================================ */
+
     td:last-child .actions{ display:flex; gap:.5rem; flex-wrap:wrap }
 
     .badge{ padding:.25rem .5rem; border-radius:999px; font-size:.85rem }
@@ -96,7 +100,7 @@
     #overlay{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.28); z-index:110; transition:opacity .2s }
     #overlay.hide{ opacity:0; pointer-events:none }
 
-    /* Loader base */
+    /* Loader base (คงเดิม)… */
     .loader { --dur: 2s; display:block; margin:auto; width:14em; height:auto; }
     .loader__glare-top,
     .loader__glare-bottom,
@@ -135,7 +139,6 @@
     @media (prefers-color-scheme: dark){
       :root{ --bg:#1e1e1e; --fg:hsl(var(--hue),90%,90%) }
     }
-    /* Animations */
     @keyframes loader-flip{ from{ transform:translate(13.75px,9.25px) rotate(-180deg) } 24%,to{ transform:translate(13.75px,9.25px) rotate(0) } }
     @keyframes glare-top{ from{ stroke:rgba(255,255,255,0) } 24%,to{ stroke:white } }
     @keyframes glare-bottom{ from{ stroke:white } 24%,to{ stroke:rgba(255,255,255,0) } }
@@ -458,7 +461,7 @@
 
   <!-- Overlay: ใช้ Loader รุ่น hourglass -->
   <div id="overlay" class="hide" aria-live="polite" aria-busy="true">
-    <!-- From Uiverse.io by nima-mollazadeh -->
+    <!-- Loader (คงเดิม)… -->
     <svg aria-label="loader being flipped clockwise and circled by three white curves fading in and out"
          role="img" height="56" width="56" viewBox="0 0 56 56" class="loader">
       <clipPath id="sand-mound-top">
@@ -529,6 +532,17 @@ const monthBounds = d => ({ start: toYMD(new Date(d.getFullYear(), d.getMonth(),
 const debounce = (fn,ms=300)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; };
 function addDays(ymd, delta){ const [y,m,d]=ymd.split('-').map(Number); const nd=new Date(y, m-1, d+delta); return toYMD(nd); }
 const log = (...a)=>{ try{ console.debug('[FIN-JOD]', ...a); }catch{} };
+
+/* ===== [เพิ่ม] รีเซ็ต scroll แนวนอนของกรอบตาราง ===== */
+function resetHScroll(el){ try{ if(el) el.scrollLeft = 0; }catch{} }
+/* ===== [เพิ่ม] สั่งให้ทุกตาราง re-render เมื่อหมวดพร้อม ===== */
+function rerenderAllTables(){
+  try{
+    if (recentItems && recentItems.length) renderRecent();
+    if (loaded.list && lastItems && lastItems.length) renderTable(lastItems);
+  }catch(_){}
+}
+/* =========================================================== */
 
 function setBusy(btn, on, tempText){
   if (!btn) return;
@@ -612,6 +626,7 @@ async function loadCategoriesAll(){
     cats = cache;
     $('#txCat').disabled = false;
     populateCatSelect();
+    rerenderAllTables(); /* <- เพิ่ม */
     return;
   }
   $('#txCat').disabled = true; $('#txCat').innerHTML = '<option>กำลังโหลด…</option>';
@@ -620,6 +635,7 @@ async function loadCategoriesAll(){
   cats={ income:ri.ok?(ri.items||[]):[], expense:re.ok?(re.items||[]):[], saving:rs.ok?(rs.items||[]):[] };
   cacheSet('fin_cats_v1', cats, cacheTTL.cats);
   $('#txCat').disabled = false; populateCatSelect();
+  rerenderAllTables(); /* <- เพิ่ม */
 }
 async function loadDebtsList(){
   const cache = cacheGet('fin_debts_v1');
@@ -710,7 +726,7 @@ async function updateMiniDashboard(){
 /** ====== ล่าสุด 5 รายการ ====== */
 function renderRecent(){
   const tb = $('#recentBody'); tb.innerHTML='';
-  if (!recentItems.length){ tb.innerHTML='<tr><td colspan="6" class="muted">ยังไม่มีรายการ</td></tr>'; return; }
+  if (!recentItems.length){ tb.innerHTML='<tr><td colspan="6" class="muted">ยังไม่มีรายการ</td></tr>'; resetHScroll($('#recentBox')); return; }
   const frag=document.createDocumentFragment();
   for (const x of recentItems.slice(0,5)){
     const { badge, text, catName } = getDisplayMeta(x);
@@ -730,6 +746,7 @@ function renderRecent(){
     frag.appendChild(tr);
   }
   tb.appendChild(frag);
+  resetHScroll($('#recentBox')); /* <- เพิ่ม */
 }
 async function loadRecentFromAPI(){
   const to=todayISO();
@@ -770,6 +787,7 @@ async function saveAddCat(ev){
     closeAddCat();
     toast('เพิ่มหมวดสำเร็จ');
     updateMiniDashboard();
+    rerenderAllTables(); /* <- เพิ่ม */
   }, 'กำลังบันทึก…');
 }
 $('#btnAddCatOpen').addEventListener('click', openAddCat);
@@ -871,6 +889,7 @@ function renderTable(items){
     frag.appendChild(tr);
   }
   tb.appendChild(frag);
+  resetHScroll(document.querySelector('#pane-list .table-viewport')); /* <- เพิ่ม */
 }
 async function refreshList(btn){
   if (!token) return;
@@ -1051,8 +1070,8 @@ document.querySelectorAll('.chip[data-range]').forEach(ch=>{
     if (k==='year'){ const y=new Date().getFullYear(); setRange(`${y}-01-01`, `${y}-12-31`); }
   });
 });
-$('#fFrom').addEventListener('change', ()=>{ updateRangeUI(); debouncedRefresh(); });
-$('#fTo').addEventListener('change',   ()=>{ updateRangeUI(); debouncedRefresh(); });
+$('#fFrom').addEventListener('change', ()=>{ updateRangeUI(); debouncedRefresh(); resetHScroll(document.querySelector('#pane-list .table-viewport')); }); /* <- เพิ่ม */
+$('#fTo').addEventListener('change',   ()=>{ updateRangeUI(); debouncedRefresh(); resetHScroll(document.querySelector('#pane-list .table-viewport')); });   /* <- เพิ่ม */
 
 /** ====== Tabs & Prefetch ====== */
 function activateTab(tab){
@@ -1077,10 +1096,14 @@ function activateTab(tab){
     if (!loaded.list){
       const mb = monthBounds(new Date());
       $('#fFrom').value = mb.start; $('#fTo').value = mb.end; updateRangeUI();
-      refreshList().then(()=> loaded.list = true);
+      refreshList().then(()=> { loaded.list = true; resetHScroll(document.querySelector('#pane-list .table-viewport')); }); /* <- เพิ่ม */
     } else if (listDirty){
-      refreshList().finally(()=> { listDirty = false; });
+      refreshList().finally(()=> { listDirty = false; resetHScroll(document.querySelector('#pane-list .table-viewport')); }); /* <- เพิ่ม */
+    } else {
+      resetHScroll(document.querySelector('#pane-list .table-viewport')); /* <- เพิ่ม */
     }
+  } else {
+    resetHScroll($('#recentBox')); /* <- เพิ่ม */
   }
 }
 $('#tab-create').addEventListener('click', ()=> activateTab('create'));
@@ -1090,6 +1113,7 @@ $('#btnPrefetchCreate').addEventListener('click', async (e)=>{
     await Promise.all([loadCategoriesAll(), loadDebtsList()]);
     populateCatSelect();
     updateMiniDashboard();
+    rerenderAllTables(); /* <- เพิ่ม */
   }, 'กำลังรีเฟรช…');
 });
 $('#btnRefresh').addEventListener('click', (e)=> refreshList(e.currentTarget));
@@ -1108,7 +1132,28 @@ $('#btnRefresh').addEventListener('click', (e)=> refreshList(e.currentTarget));
     $('#linkBox').classList.remove('hide');
     toast('เริ่มต้นผ่าน LIFF ไม่สำเร็จ — เข้าสู่ระบบด้วย User/PIN ได้', false);
   }
+
+  /* <- เพิ่ม: บังคับเริ่มซ้ายสุดตั้งแต่เปิดหน้า */
+  resetHScroll($('#recentBox'));
+  resetHScroll(document.querySelector('#pane-list .table-viewport'));
 })();
+
+/* ===== [เพิ่ม] ป้องกัน webview จำตำแหน่ง scroll: bfcache / หมุนจอ / resize ===== */
+window.addEventListener('pageshow', (e)=>{
+  resetHScroll($('#recentBox'));
+  resetHScroll(document.querySelector('#pane-list .table-viewport'));
+});
+window.addEventListener('orientationchange', ()=> {
+  setTimeout(()=>{
+    resetHScroll($('#recentBox'));
+    resetHScroll(document.querySelector('#pane-list .table-viewport'));
+  }, 0);
+});
+window.addEventListener('resize', debounce(()=>{
+  resetHScroll($('#recentBox'));
+  resetHScroll(document.querySelector('#pane-list .table-viewport'));
+}, 150));
+/* ============================================================================ */
 
 /** ====== UI listeners ====== */
 $$('.segbtn').forEach(b=> b.addEventListener('click', ()=> setType(b.dataset.type)));
