@@ -76,12 +76,33 @@
     .muted{ color:var(--muted) }
     .right{ text-align:right }
 
-    table{ width:100%; border-collapse:collapse; table-layout:fixed; font-size:.98rem }
+    /* ===== TABLE: base ===== */
+    table{
+      width:100%;
+      border-collapse:collapse;
+      table-layout:fixed;
+      font-size:.98rem;
+      /* ✅ FIX 1: บังคับความกว้างขั้นต่ำให้ล้นกรอบบนจอแคบ เพื่อให้ h-scroll โผล่แน่นอน */
+      min-width:960px;
+    }
     th,td{ border-bottom:1px solid var(--line); padding:.8rem .5rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle }
     th{ color:var(--muted); font-weight:600; text-align:left; position:sticky; top:0; background:#1f1f1f; z-index:1 }
-    .table-viewport{ max-height:72vh; overflow:auto; border-radius:12px; border:1px solid var(--line) }
+
+    .table-viewport{
+      max-height:72vh;
+      overflow:auto;
+      border-radius:12px;
+      border:1px solid var(--line);
+      /* ✅ FIX 2: โมเมนตัมสกอร์ลบน iOS + ลดอาการหน่วงใน WKWebView */
+      -webkit-overflow-scrolling: touch;
+    }
     .table-viewport tbody tr:hover{ background:#2a2a2a }
     td:last-child .actions{ display:flex; gap:.5rem; flex-wrap:wrap }
+
+    /* ✅ FIX 3: กันคอลัมภ์สำคัญถูกบีบเป็นศูนย์บนจอแคบ */
+    /* หมวด/เจ้าหนี้ = คอลัมภ์ที่ 3, หมายเหตุ = คอลัมภ์ที่ 5 */
+    thead th:nth-child(3), tbody td:nth-child(3){ min-width:200px }
+    thead th:nth-child(5), tbody td:nth-child(5){ min-width:220px }
 
     .badge{ padding:.25rem .5rem; border-radius:999px; font-size:.85rem }
     .badge-inc{ background:rgba(0,200,150,.18); color:#9ff3df; border:1px solid rgba(0,200,150,.35) }
@@ -768,6 +789,8 @@ function renderRecent(){
     frag.appendChild(tr);
   }
   tb.appendChild(frag);
+  // ✅ FIX 4: กัน scrollLeft ค้างใน WKWebView
+  tb.closest('.table-viewport')?.scrollTo({ left: 0, behavior: 'instant' });
 }
 async function loadRecentFromAPI(){
   const to=todayISO();
@@ -909,6 +932,8 @@ function renderTable(items){
     frag.appendChild(tr);
   }
   tb.appendChild(frag);
+  // ✅ FIX 4: กัน scrollLeft ค้างใน WKWebView
+  tb.closest('.table-viewport')?.scrollTo({ left: 0, behavior: 'instant' });
 }
 // ⬇️ self-heal: ถ้าช่องหมวดยังว่าง ให้ force โหลดหมวดแล้วเรนเดอร์ซ้ำ
 async function safeRenderList(items){
@@ -1112,6 +1137,9 @@ async function activateTab(tab){
   $('#pane-create').classList.toggle('active', isCreate);
   $('#pane-list').classList.toggle('active', !isCreate);
 
+  // ✅ FIX 5: รีเซ็ตตำแหน่งเลื่อนแนวนอนเมื่อสลับแท็บ
+  setTimeout(()=> $$('.table-viewport').forEach(v=> v.scrollLeft = 0), 0);
+
   if (isCreate && !loaded.create){
     $('#txDate').value = todayISO();
     setType('expense');
@@ -1165,6 +1193,10 @@ $('#btnRefresh').addEventListener('click', (e)=> refreshList(e.currentTarget));
 /** ====== UI listeners ====== */
 $$('.segbtn').forEach(b=> b.addEventListener('click', ()=> setType(b.dataset.type)));
 $('#btnCancel').addEventListener('click', ()=>{ $('#editBackdrop').classList.remove('show'); $('#editBackdrop').setAttribute('aria-hidden','true'); });
+
+// ✅ FIX 6: กันเคสหมุนจอ/resize แล้ว scrollLeft ค้าง
+window.addEventListener('orientationchange', ()=> $$('.table-viewport').forEach(v=> v.scrollLeft = 0));
+window.addEventListener('resize', debounce(()=> $$('.table-viewport').forEach(v=> v.scrollLeft = 0), 150));
 </script>
 </body>
 </html>
